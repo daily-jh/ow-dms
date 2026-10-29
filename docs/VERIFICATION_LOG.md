@@ -71,3 +71,4 @@
 | 공개 시연 구성(`infra/compose.demo.yaml`) | db·bootstrap·api·worker·web·caddy 기동, bootstrap 재실행 시 seed 생략, Caddy HTTPS 응답·HSTS·noindex 헤더 확인, `demo-reset.sh` 초기화 확인, 브라우저 점검 12단계 통과 |
 | 내 PC 구성(`infra/compose.local.yaml`) | 설정 파일 없이 기동, http://127.0.0.1:3000에서 브라우저 점검 12단계 통과(Secure 쿠키 해제 경로) |
 | Codespaces 구성(`.devcontainer`) | 같은 compose를 로컬에서 재현해 setup·start 후 브라우저 점검 12단계 통과. 실제 Codespaces 주소(*.app.github.dev)에서의 동작은 첫 실행 때 확인 필요 |
+| 오라클 설치 스크립트(`infra/oracle-setup.sh`) | 깨끗한 Ubuntu 24.04 컨테이너에서 시험(도커 실행·공인 IP 조회는 대체): 패키지 설치, 오라클식 REJECT 규칙 앞에 80·443 허용 삽입, 비밀값 파일 600 권한 생성, sslip.io 주소 생성, 초기화 cron 등록, 재실행 시 규칙·비밀값 중복 없음. 실제 오라클 서버에서는 첫 설치 때 확인 필요 |
