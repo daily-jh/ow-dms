@@ -46,3 +46,16 @@ export function CorrectionForm({ targetType, targetId, returnTo, label, needsIns
     </details>
   );
 }
+
+export const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
+/** 공개 시연판 표시: 누구나 같은 합성 계정으로 들어오므로 실제 정보 입력을 막는 안내를 항상 띄운다. */
+export function DemoBanner() {
+  if (!DEMO_MODE) return null;
+  return (
+    <p className="demo-banner" role="note">
+      공개 시연판입니다. 모든 기관·후원자·물품은 합성(가상) 자료이며, 입력한 내용은 다른 방문자에게 보이고 수시로 초기화됩니다.
+      실제 이름·연락처·주민번호·계좌 등 개인정보를 입력하지 마십시오.
+    </p>
+  );
+}

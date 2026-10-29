@@ -40,9 +40,15 @@ export async function devLogin(form: FormData) {
   if (!res.ok) redirect('/login?error=' + encodeURIComponent('로그인할 수 없습니다.'));
   const { token, expiresAt } = (await res.json()) as { token: string; expiresAt: string };
   (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', path: '/', expires: new Date(expiresAt),
+    httpOnly: true, sameSite: 'strict', secure: secureCookie(), path: '/', expires: new Date(expiresAt),
   });
   redirect('/');
+}
+
+/** 운영 빌드는 Secure 쿠키. 내 PC에서 http://localhost로 띄울 때만 COOKIE_SECURE=false로 끈다. */
+function secureCookie(): boolean {
+  if (process.env.COOKIE_SECURE === 'false') return false;
+  return process.env.NODE_ENV === 'production';
 }
 
 export async function logout() {

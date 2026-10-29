@@ -1,0 +1,17 @@
+{
+  "name": "OW-DMS (합성자료 시연)",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "node",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "OW-DMS 화면", "onAutoForward": "openBrowser" },
+    "4000": { "label": "API(내부용)", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "sh .devcontainer/setup.sh",
+  "postStartCommand": "sh .devcontainer/start.sh",
+  "customizations": {
+    "codespaces": { "openFiles": ["docs/RUN_WITHOUT_SERVER.md"] }
+  }
+}

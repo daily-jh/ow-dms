@@ -35,3 +35,34 @@ jobs:
       - run: pnpm --filter @owdms/web build
       - name: dependency audit (report only)
         run: pnpm audit --prod || true
+
+  demo-image:
+    # 공개 시연판 이미지가 빌드되고, 컨테이너 구성이 실제로 뜨는지 확인한다(caddy 제외).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build image
+        run: docker build -t owdms:demo .
+      - name: start demo stack with throwaway secrets
+        run: |
+          {
+            echo DEMO_DOMAIN=localhost
+            echo POSTGRES_PASSWORD=$(openssl rand -hex 24)
+            echo APP_DB_PASSWORD=$(openssl rand -hex 24)
+            echo SESSION_SECRET=$(openssl rand -base64 32)
+            echo PII_ENCRYPTION_KEY=$(openssl rand -base64 32)
+          } > infra/.env
+          docker compose -f infra/compose.demo.yaml up -d --no-build db bootstrap api worker web
+      - name: check services
+        run: |
+          for i in $(seq 1 30); do
+            docker compose -f infra/compose.demo.yaml exec -T web node -e "fetch('http://localhost:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" && ok=1 && break
+            sleep 2
+          done
+          docker compose -f infra/compose.demo.yaml logs bootstrap api worker
+          test "$ok" = 1
+          docker compose -f infra/compose.demo.yaml logs bootstrap | grep -q "demo seed inserted"
+          docker compose -f infra/compose.demo.yaml exec -T web node -e "fetch('http://api:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      - name: stop
+        if: always()
+        run: docker compose -f infra/compose.demo.yaml down -v

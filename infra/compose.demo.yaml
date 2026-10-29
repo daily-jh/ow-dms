@@ -1,0 +1,96 @@
+# 공개 시연판(합성자료 전용). 실제 기관 자료·개인정보를 넣는 운영 구성이 아니다.
+# 사용법: docs/DEPLOY_DEMO.md
+name: owdms-demo
+
+# api·worker·bootstrap 공통 환경값
+x-common-env: &common
+  NODE_ENV: production
+  DEMO_MODE: "true"
+  DATABASE_URL: postgres://owdms_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD 필요}@db:5432/owdms
+  PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?PII_ENCRYPTION_KEY 필요}
+
+services:
+  db:
+    image: postgres:16.10
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: owdms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 필요}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d owdms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # 포트를 열지 않는다: DB는 내부망에서만 접근
+
+  # 시작 시 1회: migration → 앱 계정 비밀번호 교체 → 빈 DB일 때만 합성 시연자료 입력
+  bootstrap:
+    build: { context: .., dockerfile: Dockerfile }
+    image: owdms:demo
+    environment:
+      <<: *common
+      # migration은 테이블 owner 계정으로, 앱은 owdms_app(비 superuser, RLS 적용)으로 접속한다.
+      MIGRATION_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/owdms
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    working_dir: /app/packages/db
+    command: ["../../node_modules/.bin/tsx", "src/cli.ts", "bootstrap"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: owdms:demo
+    restart: unless-stopped
+    environment:
+      <<: *common
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET 필요(32자 이상)}
+      DEV_LOGIN_ENABLED: "true"
+      API_PORT: "4000"
+    # tsx는 현재 폴더의 tsconfig(데코레이터 설정)를 읽으므로 패키지 폴더에서 실행한다.
+    working_dir: /app/apps/api
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+    # 외부 공개 없음: web만 내부망으로 호출
+
+  worker:
+    image: owdms:demo
+    restart: unless-stopped
+    environment: *common
+    working_dir: /app/apps/worker
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  web:
+    image: owdms:demo
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DEMO_MODE: "true"
+      API_BASE_URL: http://api:4000
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?DEMO_DOMAIN 필요}
+    volumes:
+      - ./Caddyfile.demo:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web]
+
+volumes:
+  db:
+  caddy-data:
+  caddy-config:

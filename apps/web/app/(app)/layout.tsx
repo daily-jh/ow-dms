@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { api, type Me } from '@/lib/api';
 import { logout } from '@/lib/actions';
+import { DemoBanner } from '../components';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await api<Me>('/v1/auth/me');
   return (
+    <>
+    <DemoBanner />
     <div className="shell">
       <nav className="nav" aria-label="주 메뉴">
         <div className="brand">OW-DMS<small>{me.tenantName}</small></div>
@@ -26,5 +29,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </nav>
       <main>{children}</main>
     </div>
+    </>
   );
 }

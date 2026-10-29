@@ -13,7 +13,12 @@
 - 희망이음 준비: 업무별 지원상태, **내부 검토용·희망이음 호환 미검증** Excel, 전송 비활성
 - 오늘의 업무 대시보드, 감사기록, 멱등 요청(Idempotency-Key)
 
-## 빠른 시작
+## 써 보기
+- **서버 없이**: GitHub Codespaces(브라우저만) 또는 내 PC의 Docker Desktop으로 실행 → [`docs/RUN_WITHOUT_SERVER.md`](docs/RUN_WITHOUT_SERVER.md)
+  - 내 PC: `docker compose -f infra/compose.local.yaml up -d --build` 후 http://localhost:3000
+- **공개 시연판(서버 1대)**: [`docs/DEPLOY_DEMO.md`](docs/DEPLOY_DEMO.md). 합성자료 전용이며 실제 기관 운영 배포가 아닙니다.
+
+## 빠른 시작(개발자)
 요구: Node.js 22 이상(24 LTS 권장), pnpm 10, PostgreSQL 16+
 
 ```bash
