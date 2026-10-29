@@ -24,8 +24,9 @@
 | period_closures | period(YYYY-MM), reopened_* | 마감 기간 초안·승인·출고 차단 |
 | generated_documents | document_type, template_id/version, source_*, is_draft, snapshot, snapshot_hash, output_hash, generated_by_job | 재출력 시 해시 일치 확인 |
 | integration_batches / integration_rows | mode, spec_version, idempotency_key / state, source_version, source_snapshot_hash, external_ref, verified_* | 행별 상태 |
+| correction_events | target_type/id/version, target_snapshot_hash, kind(REVERSAL/CANCEL/RETURN), business_date, reason, inspection_confirmed, status | 승인 시 역거래·상태 이동. 대상별 처리 대기 1건 |
 | outbox / job_runs | event_type, aggregate_*, processed_at, attempts / event_id UNIQUE | 중복 소비 차단 |
 | idempotency_keys | key, request_hash, status_code, response | (tenant,key) PK |
 | audit_events | category(LEDGER/ACCESS/AUTH/ADMIN), action, resource_type/id, result, request_id | 원문 개인정보 금지, append-only |
 
-상태값: 거래 `DRAFT → PENDING_APPROVAL → APPROVED (→ REVERSED)`, 반려 `REJECTED`(수정 후 재요청). 배분은 `APPROVED → POSTED`. 외부연계 `NOT_READY → VALIDATED → PREPARED → EXPORTED → SUBMITTED → ACKNOWLEDGED → VERIFIED | REJECTED | UNKNOWN`.
+상태값: 거래 `DRAFT → PENDING_APPROVAL → APPROVED (→ REVERSED: 정정 승인)`, 반려 `REJECTED`(수정 후 재요청). 배분은 `APPROVED → POSTED`, 정정 시 `APPROVED → CANCELLED`(예약 해제) 또는 `POSTED → RETURNED`(반품). 외부연계 `NOT_READY → VALIDATED → PREPARED → EXPORTED → SUBMITTED → ACKNOWLEDGED → VERIFIED | REJECTED | UNKNOWN`.

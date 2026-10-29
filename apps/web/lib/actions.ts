@@ -132,3 +132,29 @@ export async function createBatch(form: FormData) {
   await run('/integrations', () => api('/v1/integration-batches', { method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined, body: { operation: 'goodsReceipt', sourceIds } }),
     '내부 검토 배치를 만들었습니다.');
 }
+
+function seoulToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+}
+
+export async function requestCorrection(form: FormData) {
+  const returnTo = s(form, 'returnTo') ?? '/approvals';
+  await run(returnTo, () => api('/v1/corrections', {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+    body: {
+      targetType: s(form, 'targetType'), targetId: s(form, 'targetId'), reason: s(form, 'reason') ?? '',
+      businessDate: s(form, 'businessDate') ?? seoulToday(), inspectionConfirmed: form.get('inspectionConfirmed') === 'on',
+    },
+  }), '정정을 요청했습니다. 승인권자가 승인하면 역거래로 반영됩니다.');
+}
+
+export async function closePeriod(form: FormData) {
+  const period = s(form, 'period') ?? '';
+  await run(`/closing?period=${period}`, () => api('/v1/period-closures', { method: 'POST', body: { period } }), `${period}을 마감했습니다.`);
+}
+
+export async function reopenPeriod(form: FormData) {
+  const period = s(form, 'period') ?? '';
+  await run(`/closing?period=${period}`, () => api(`/v1/period-closures/${period}/reopen`, { method: 'POST', body: { reason: s(form, 'reason') ?? '' } }),
+    `${period}을 재개방했습니다. 정리 후 다시 마감하십시오.`);
+}

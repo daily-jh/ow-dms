@@ -89,3 +89,16 @@ export interface ApiError {
   fieldErrors: Record<string, string>;
   requestId: string;
 }
+
+export const RequestCorrectionRequest = z.object({
+  targetType: z.enum(['GOODS_RECEIPT', 'MONEY_RECEIPT', 'DISTRIBUTION']),
+  targetId: uuid,
+  reason: z.string().trim().min(1).max(500),
+  businessDate: date,
+  inspectionConfirmed: z.boolean().optional(),
+});
+
+const period = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'YYYY-MM');
+export const ClosePeriodRequest = z.object({ period });
+export const ReopenPeriodRequest = z.object({ reason: z.string().trim().min(1).max(500) });
+export const PeriodParam = period;

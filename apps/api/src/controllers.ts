@@ -2,13 +2,15 @@ import { Body, Controller, Get, Inject, Param, Post, Query, Req, Res, Header } f
 import type { Request, Response } from 'express';
 import {
   CreateDistributionRequest, CreateDonorRequest, CreateGoodsReceiptRequest, CreateIntegrationBatchRequest, CreateMoneyReceiptRequest,
-  DecideApprovalRequest, DevLoginRequest, GenerateDocumentRequest, RequestApprovalRequest,
+  ClosePeriodRequest, DecideApprovalRequest, DevLoginRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
+  RequestCorrectionRequest,
 } from '@owdms/contracts';
 import {
   activeMemberships, capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
   createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, findUser, generateDocument, getGoodsReceipt, getLedger,
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
-  postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, withTenant,
+  postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, withTenant, requestCorrection, listCorrections,
+  periodChecklist, closePeriod, reopenPeriod, listAuditEvents,
 } from '@owdms/db';
 import { DomainError, ROLE_LABEL, ROLE_ACTIONS, type Role } from '@owdms/domain';
 import { z } from 'zod';
@@ -84,12 +86,11 @@ export class LedgerController {
   @Get('reference-data')
   referenceData(@Req() req: Request) {
     return this.rt.tx(req, async (db) => {
-      const [facilities, warehouses, items, funds] = await Promise.all([
-        db.query('select id, name from facilities order by name'),
-        db.query('select id, facility_id as "facilityId", name from warehouses order by name'),
-        db.query('select id, name, base_unit as "baseUnit", perishable from items order by name'),
-        db.query('select id, name, designated from funds order by designated, name'),
-      ]);
+      // 한 연결(트랜잭션)에서는 순차 실행한다
+      const facilities = await db.query('select id, name from facilities order by name');
+      const warehouses = await db.query('select id, facility_id as "facilityId", name from warehouses order by name');
+      const items = await db.query('select id, name, base_unit as "baseUnit", perishable from items order by name');
+      const funds = await db.query('select id, name, designated from funds order by designated, name');
       return { facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows };
     });
   }
@@ -193,6 +194,43 @@ export class LedgerController {
   async documentHtml(@Req() req: Request, @Res() res: Response, @Param('id') did: string) {
     const r = await this.rt.tx(req, (db, ctx) => renderStoredDocument(db, ctx, id(did)));
     res.type('html').send(r.html);
+  }
+
+  @Get('corrections')
+  corrections(@Req() req: Request, @Query('targetId') targetId?: string) {
+    return this.rt.tx(req, (db, ctx) => listCorrections(db, ctx, { targetId: targetId ? id(targetId) : undefined }));
+  }
+
+  /** 승인 후 정정 요청(입고 역거래·후원금 취소·배분 취소/반품). 승인권자 승인 시 반영된다. */
+  @Post('corrections')
+  requestCorrection(@Req() req: Request, @Body() body: unknown) {
+    const input = RequestCorrectionRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => requestCorrection(db, ctx, input));
+  }
+
+  @Get('period-closures/:period')
+  checklist(@Req() req: Request, @Param('period') period: string) {
+    const p = PeriodParam.parse(period);
+    return this.rt.tx(req, (db, ctx) => periodChecklist(db, ctx, p));
+  }
+
+  @Post('period-closures')
+  close(@Req() req: Request, @Body() body: unknown) {
+    const input = ClosePeriodRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => closePeriod(db, ctx, input.period));
+  }
+
+  @Post('period-closures/:period/reopen')
+  reopen(@Req() req: Request, @Param('period') period: string, @Body() body: unknown) {
+    const p = PeriodParam.parse(period);
+    const input = ReopenPeriodRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => reopenPeriod(db, ctx, p, input.reason));
+  }
+
+  @Get('audit-events')
+  auditEvents(@Req() req: Request, @Query('category') category?: string) {
+    const c = category && ['LEDGER', 'ACCESS', 'AUTH', 'ADMIN'].includes(category) ? category : undefined;
+    return this.rt.tx(req, (db, ctx) => listAuditEvents(db, ctx, { category: c }));
   }
 
   @Get('integrations/capabilities')

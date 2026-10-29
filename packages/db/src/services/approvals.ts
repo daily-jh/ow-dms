@@ -3,6 +3,7 @@ import type { ActorContext } from '../pool';
 import { assertPeriodOpen, audit, enqueueOutbox, requireAction, type Db } from './common';
 import { getDistributionSnapshot, reserveForDistribution } from './distributions';
 import { getMoneyReceiptSnapshot } from './money';
+import { applyCorrection, rejectCorrection } from './corrections';
 
 export type ApprovalTarget = 'GOODS_RECEIPT' | 'MONEY_RECEIPT' | 'DISTRIBUTION';
 
@@ -75,6 +76,7 @@ export async function decideApproval(
   const a = await db.query(`select * from approvals where id = $1 for update`, [approvalId]);
   const ap = a.rows[0];
   if (!ap) throw new DomainError('NOT_FOUND', '승인 요청을 찾을 수 없습니다.');
+  if (ap.target_type === 'CORRECTION') return decideCorrection(db, ctx, ap, decision);
   const type = ap.target_type as ApprovalTarget;
   const target = await db.query(`select status, version from ${TABLE[type]} where id = $1 for update`, [ap.target_id]);
   const tr = target.rows[0];
@@ -122,6 +124,30 @@ export async function decideApproval(
   return { status: 'APPROVED' as const };
 }
 
+/** 정정 요청 승인/반려. 원거래는 수정하지 않고 역거래·상태 이동만 기록한다. */
+async function decideCorrection(
+  db: Db,
+  ctx: ActorContext,
+  ap: { id: string; target_id: string; target_version: number; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'; requested_by: string },
+  decision: { decision: 'APPROVE' | 'REJECT'; reason?: string | null },
+) {
+  assertCanDecide({
+    approvalStatus: ap.status, requestedBy: ap.requested_by, decidedBy: ctx.userId, approvalTargetVersion: ap.target_version,
+    currentTargetVersion: ap.target_version, selfApprovalException: ctx.selfApprovalException,
+  });
+  if (decision.decision === 'REJECT') {
+    if (!decision.reason?.trim()) throw new DomainError('VALIDATION_FAILED', '반려 사유를 입력하십시오.', { reason: '필수' });
+    await rejectCorrection(db, ap.target_id);
+    await db.query(`update approvals set status = 'REJECTED', decided_by = $2, decided_at = now(), reason = $3 where id = $1`, [ap.id, ctx.userId, decision.reason]);
+    await audit(db, ctx, { category: 'LEDGER', action: 'approval.reject', resourceType: 'CORRECTION', resourceId: ap.target_id });
+    return { status: 'REJECTED' as const };
+  }
+  await applyCorrection(db, ctx, ap.target_id);
+  await db.query(`update approvals set status = 'APPROVED', decided_by = $2, decided_at = now(), reason = $3 where id = $1`, [ap.id, ctx.userId, decision.reason ?? null]);
+  await audit(db, ctx, { category: 'LEDGER', action: 'approval.approve', resourceType: 'CORRECTION', resourceId: ap.target_id });
+  return { status: 'APPROVED' as const };
+}
+
 async function applyGoodsReceipt(db: Db, ctx: ActorContext, receiptId: string, t: Awaited<ReturnType<typeof goodsReceiptSnapshot>>) {
   const datePart = String(t.row.received_on).replaceAll('-', '');
   for (const l of t.lines) {
@@ -155,7 +181,7 @@ export async function listApprovals(db: Db, ctx: ActorContext, q: { status?: str
     [q.status ?? null],
   );
   return r.rows.map((a) => ({
-    id: a.id as string, targetType: a.target_type as ApprovalTarget, targetId: a.target_id as string, targetVersion: a.target_version as number,
+    id: a.id as string, targetType: a.target_type as ApprovalTarget | 'CORRECTION', targetId: a.target_id as string, targetVersion: a.target_version as number,
     status: a.status as string, snapshot: a.snapshot as Record<string, unknown>, snapshotHash: a.snapshot_hash as string,
     requestedAt: (a.requested_at as Date).toISOString(), decidedAt: (a.decided_at as Date | null)?.toISOString() ?? null,
     reason: a.reason as string | null, requestedBy: a.requested_by as string, requestedByName: a.requested_by_name as string,

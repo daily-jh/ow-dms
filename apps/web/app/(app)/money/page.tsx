@@ -1,7 +1,7 @@
 import { api, apiIfAllowed } from '@/lib/api';
-import { createMoneyReceipt, requestApproval } from '@/lib/actions';
+import { createMoneyReceipt, requestApproval, requestCorrection } from '@/lib/actions';
 import { newKey, won } from '@/lib/format';
-import { Flash, Status, type SearchParams } from '../../components';
+import { CorrectionForm, Flash, Status, type SearchParams } from '../../components';
 
 interface Row { id: string; receivedOn: string; amount: string; method: string; status: string; donorName: string | null }
 interface Ref { facilities: { id: string; name: string }[]; funds: { id: string; name: string; designated: boolean }[] }
@@ -49,7 +49,8 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
                   <input type="hidden" name="targetType" value="MONEY_RECEIPT" /><input type="hidden" name="targetId" value={r.id} /><input type="hidden" name="returnTo" value="/money" />
                   <button type="submit" className="secondary">승인 요청</button>
                 </form>
-              )}</td>
+              )}
+              {r.status === 'APPROVED' && <CorrectionForm action={requestCorrection} targetType="MONEY_RECEIPT" targetId={r.id} returnTo="/money" label="수납 취소·환불 요청" />}</td>
             </tr>
           ))}
         </tbody>
