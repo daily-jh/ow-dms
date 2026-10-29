@@ -1,0 +1,19 @@
+{
+  "name": "@owdms/tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@owdms/db": "workspace:*",
+    "@owdms/domain": "workspace:*",
+    "exceljs": "4.4.0",
+    "pg": "8.23.1",
+    "@owdms/api": "workspace:*",
+    "@nestjs/common": "12.3.2",
+    "@owdms/worker": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
+  }
+}

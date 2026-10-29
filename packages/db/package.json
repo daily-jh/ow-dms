@@ -1,0 +1,23 @@
+{
+  "name": "@owdms/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "migrate": "tsx src/cli.ts migrate",
+    "seed": "tsx src/cli.ts seed",
+    "reset": "tsx src/cli.ts reset"
+  },
+  "dependencies": {
+    "@owdms/adapters": "workspace:*",
+    "@owdms/documents": "workspace:*",
+    "@owdms/domain": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
+  }
+}
