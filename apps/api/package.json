@@ -1,0 +1,31 @@
+{
+  "name": "@owdms/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/app.ts" },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.3.2",
+    "@nestjs/core": "12.3.2",
+    "@nestjs/platform-express": "12.3.2",
+    "@owdms/adapters": "workspace:*",
+    "@owdms/contracts": "workspace:*",
+    "@owdms/db": "workspace:*",
+    "@owdms/documents": "workspace:*",
+    "@owdms/domain": "workspace:*",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/pg": "8.15.6",
+    "pg": "8.23.1"
+  }
+}

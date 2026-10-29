@@ -1,0 +1,14 @@
+# 개발 전용. 운영 DB는 인터넷에 직접 공개하지 않는다.
+services:
+  db:
+    image: postgres:16.10
+    environment:
+      POSTGRES_DB: owdms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres-dev-only
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - owdms-db:/var/lib/postgresql/data
+volumes:
+  owdms-db:

@@ -1,0 +1,14 @@
+{
+  "name": "@owdms/adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@owdms/contracts": "workspace:*",
+    "@owdms/domain": "workspace:*",
+    "exceljs": "4.4.0"
+  }
+}

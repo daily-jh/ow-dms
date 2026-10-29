@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.next/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/tmp/
+# 실제 기관 자료·개인정보는 절대 커밋하지 않습니다
+/private/
+/real-data/
+*.tsbuildinfo
