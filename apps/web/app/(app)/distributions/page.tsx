@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
-import { generateDocument, postDistribution, requestApproval } from '@/lib/actions';
-import { Flash, Status, type SearchParams } from '../../components';
+import { generateDocument, postDistribution, requestApproval, requestCorrection } from '@/lib/actions';
+import { CorrectionForm, Flash, Status, type SearchParams } from '../../components';
 
 interface Dist { id: string; programName: string; plannedOn: string; status: string; version: number; recipientRef: string | null; totalQuantity: string }
 
@@ -31,6 +31,8 @@ export default async function DistributionsPage({ searchParams }: { searchParams
                     <button type="submit">출고 반영</button>
                   </form>
                 )}
+                {d.status === 'APPROVED' && <CorrectionForm action={requestCorrection} targetType="DISTRIBUTION" targetId={d.id} returnTo="/distributions" label="출고 전 취소" />}
+                {d.status === 'POSTED' && <CorrectionForm action={requestCorrection} targetType="DISTRIBUTION" targetId={d.id} returnTo="/distributions" label="반품(회수 후)" needsInspection />}
                 <form action={generateDocument} className="inline">
                   <input type="hidden" name="documentType" value="DISTRIBUTION_LIST" /><input type="hidden" name="sourceId" value={d.id} /><input type="hidden" name="returnTo" value="/distributions" />
                   <button type="submit" className="secondary">배분명부</button>

@@ -16,6 +16,7 @@ export type DomainErrorCode =
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'VALUATION_UNCONFIRMED'
+  | 'CLOSE_BLOCKED'
   | 'VALIDATION_FAILED';
 
 export class DomainError extends Error {

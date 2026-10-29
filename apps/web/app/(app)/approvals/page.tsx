@@ -1,6 +1,6 @@
 import { api, can, type Me } from '@/lib/api';
 import { decideApproval } from '@/lib/actions';
-import { TARGET_LABEL, won } from '@/lib/format';
+import { CORRECTION_LABEL, TARGET_LABEL, won } from '@/lib/format';
 import { Flash, Status, type SearchParams } from '../../components';
 
 interface Approval {
@@ -10,6 +10,7 @@ interface Approval {
 
 function Summary({ a }: { a: Approval }) {
   const s = a.snapshot;
+  if (a.targetType === 'CORRECTION') return <>{TARGET_LABEL[s.target.type]} {CORRECTION_LABEL[s.kind]} · 사유: {s.reason} · 정정일 {s.businessDate}{s.inspectionConfirmed ? ' · 회수·상태검사 확인' : ''}</>;
   if (a.targetType === 'MONEY_RECEIPT') return <>{s.receivedOn} · {won(s.amount)} · 기금 {s.fundLines.length}건</>;
   if (a.targetType === 'DISTRIBUTION') return <>{s.plannedOn} · {s.programName} · {s.lines.map((l: any) => `${l.itemName} ${l.quantity}${l.unit}`).join(', ')}</>;
   return <>{s.receivedOn} · {s.lines.map((l: any) => `${l.quantity}${l.unit}`).join(', ')} · {s.memo ?? ''}</>;

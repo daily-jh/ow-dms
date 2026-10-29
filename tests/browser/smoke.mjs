@@ -70,6 +70,36 @@ await page.goto(`${WEB}/integrations`);
 await shot('07-integrations');
 step('희망이음 준비 화면(내부 검토용·전송 비활성)');
 
+// 승인 후 정정: 입고 역거래 요청 → 승인 → 재고 0
+await page.goto(`${WEB}/goods`);
+await page.locator('tr', { hasText: '승인됨' }).first().getByRole('link').click();
+await page.waitForURL(/\/goods\/[0-9a-f-]{36}$/);
+const receiptUrl = page.url();
+await page.getByText('입고 역거래 요청').click();
+await page.fill('input[name="reason"]', '브라우저 점검 정정(합성)');
+await page.getByRole('button', { name: '정정 요청' }).click();
+await page.waitForURL(/ok=/);
+step('정정(역거래) 요청');
+await page.getByRole('button', { name: '로그아웃' }).click();
+await login('a.approver');
+await page.goto(`${WEB}/approvals`);
+await page.locator('tr', { hasText: '브라우저 점검 정정' }).getByRole('button', { name: '승인', exact: true }).click();
+await page.waitForURL(/ok=/);
+await page.goto(receiptUrl);
+if (!(await page.locator('h1').innerText()).includes('역거래')) throw new Error('역거래 상태가 표시되지 않습니다');
+await shot('08-reversed');
+step('정정 승인 → 역거래 반영');
+await page.goto(`${WEB}/closing?period=2026-10`);
+await shot('09-closing');
+if (!(await page.locator('table').innerText()).includes('승인 대기 거래')) throw new Error('마감 점검표 누락');
+step('월 마감 점검표');
+await page.getByRole('button', { name: '로그아웃' }).click();
+await login('a.auditor');
+await page.goto(`${WEB}/audit`);
+await shot('10-audit');
+if (!(await page.locator('table').innerText()).includes('correction.apply.reversal')) throw new Error('감사기록에 정정이 없습니다');
+step('감사기록에서 정정 확인');
+
 await page.getByRole('button', { name: '로그아웃' }).click();
 await login('b.goods');
 await page.goto(`${WEB}/stock`);

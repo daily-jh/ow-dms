@@ -1,20 +1,23 @@
 import { api, can, type Me } from '@/lib/api';
-import { generateDocument, requestApproval } from '@/lib/actions';
-import { won, VALUATION_LABEL } from '@/lib/format';
+import { generateDocument, requestApproval, requestCorrection } from '@/lib/actions';
+import { CORRECTION_LABEL, won, VALUATION_LABEL } from '@/lib/format';
 import Link from 'next/link';
-import { Flash, Status, type SearchParams } from '../../../components';
+import { CorrectionForm, Flash, Status, type SearchParams } from '../../../components';
 
 interface Receipt {
   id: string; facilityName: string; donorName: string | null; receivedOn: string; status: string; version: number; memo: string | null;
   snapshotHash: string | null; createdByName: string; approvedAt: string | null;
   lines: { lineNo: number; itemName: string; warehouseName: string; quantity: string; unit: string; expiresOn: string | null; valuationStatus: string; totalValue: string | null; lotId: string | null; lotCode: string | null }[];
 }
+interface Correction { id: string; kind: string; reason: string; status: string; businessDate: string; requestedByName: string }
 interface Doc { id: string; title: string; isDraft: boolean; generatedAt: string; auto: boolean; sourceVersion: number }
 
 export default async function GoodsDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
   const { id } = await params;
   const sp = await searchParams;
-  const [me, r, docs] = await Promise.all([api<Me>('/v1/auth/me'), api<Receipt>(`/v1/goods-receipts/${id}`), api<Doc[]>(`/v1/documents?sourceId=${id}`)]);
+  const [me, r, docs, corrections] = await Promise.all([
+    api<Me>('/v1/auth/me'), api<Receipt>(`/v1/goods-receipts/${id}`), api<Doc[]>(`/v1/documents?sourceId=${id}`), api<Correction[]>(`/v1/corrections?targetId=${id}`),
+  ]);
   return (
     <>
       <h1>후원품 수입 <Status value={r.status} /></h1>
@@ -51,6 +54,17 @@ export default async function GoodsDetail({ params, searchParams }: { params: Pr
           </form>
         )}
       </div>
+      {r.status === 'APPROVED' && can(me, 'goods.draft') && (
+        <div style={{ marginTop: 12 }}>
+          <CorrectionForm action={requestCorrection} targetType="GOODS_RECEIPT" targetId={r.id} returnTo={`/goods/${r.id}`} label="입고 역거래 요청(배분·이동되지 않은 로트만 가능)" />
+        </div>
+      )}
+      {corrections.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 17, marginTop: 24 }}>정정 이력</h2>
+          <ul>{corrections.map((c) => <li key={c.id}>{CORRECTION_LABEL[c.kind]} · {c.reason} · <Status value={c.status} /> <span className="muted">{c.businessDate} · {c.requestedByName}</span></li>)}</ul>
+        </>
+      )}
       <h2 style={{ fontSize: 17, marginTop: 24 }}>이 거래에서 만든 문서</h2>
       <ul>
         {docs.map((d) => (

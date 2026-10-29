@@ -11,3 +11,5 @@ export * from './integrations';
 export * from './dashboard';
 export * from './idempotency';
 export * from './auth';
+export * from './corrections';
+export * from './closing';

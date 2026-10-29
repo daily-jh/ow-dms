@@ -124,4 +124,34 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     expect(sub.status).toBe(422);
     expect(sub.json.code).toBe('CAPABILITY_DISABLED');
   });
+
+  it('정정 요청 → 승인 → 역거래, 월 마감 점검표·권한', async () => {
+    const goods = api(await login('a.goods'));
+    const approver = api(await login('a.approver'));
+    const created = await goods('POST', '/v1/goods-receipts', {
+      facilityId: SEED.facilityA, receivedOn: '2026-10-29',
+      lines: [{ itemId: SEED.itemWaterA, warehouseId: SEED.warehouseA2, quantity: '4', unit: '병' }],
+    });
+    const req = await goods('POST', '/v1/approvals', { targetType: 'GOODS_RECEIPT', targetId: created.json.id });
+    await approver('POST', `/v1/approvals/${req.json.approvalId}/decide`, { decision: 'APPROVE' });
+
+    const bad = await goods('POST', '/v1/corrections', { targetType: 'GOODS_RECEIPT', targetId: created.json.id, reason: '', businessDate: '2026-10-29' });
+    expect(bad.status).toBe(422);
+    const corr = await goods('POST', '/v1/corrections', { targetType: 'GOODS_RECEIPT', targetId: created.json.id, reason: '오입력', businessDate: '2026-10-29' });
+    expect(corr.status).toBe(201);
+    expect(corr.json.kind).toBe('REVERSAL');
+    const ok = await approver('POST', `/v1/approvals/${corr.json.approvalId}/decide`, { decision: 'APPROVE' });
+    expect(ok.json).toEqual({ status: 'APPROVED' });
+    const after = await goods('GET', `/v1/goods-receipts/${created.json.id}`);
+    expect(after.json.status).toBe('REVERSED');
+
+    const checklist = await approver('GET', '/v1/period-closures/2026-10');
+    expect(checklist.json.items.map((i: any) => i.code)).toContain('PENDING_APPROVALS');
+    expect((await goods('POST', '/v1/period-closures', { period: '2026-10' })).status).toBe(403);
+    expect((await approver('GET', '/v1/period-closures/2026-13')).status).toBe(422);
+    expect((await goods('GET', '/v1/audit-events')).status).toBe(403);
+    const auditor = api(await login('a.auditor'));
+    const events = await auditor('GET', '/v1/audit-events?category=LEDGER');
+    expect(events.json.some((e: any) => e.action === 'correction.apply.reversal')).toBe(true);
+  });
 });

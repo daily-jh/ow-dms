@@ -17,6 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/approvals">승인함</Link>
         <Link href="/documents">서식·문서</Link>
         <Link href="/integrations">희망이음 준비</Link>
+        <Link href="/closing">월 마감</Link>
+        {me.actions.includes('audit.read') && <Link href="/audit">감사기록</Link>}
         <div className="who">
           {me.displayName}<br />{me.roleLabels.join(', ')}
           <form action={logout} style={{ marginTop: 8 }}><button className="secondary" type="submit">로그아웃</button></form>
