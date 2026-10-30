@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { apiIfAllowed } from '@/lib/api';
+import { apiIfAllowed, can } from '@/lib/api';
+import { getMe } from '@/lib/nav';
 import { won } from '@/lib/format';
+import { ReadinessCard, type Readiness } from './setup/readiness';
 
 interface Dashboard {
   businessDate: string; pendingApprovals: number | null; goodsDrafts: number; moneyDrafts: number | null; unconfirmedValuations: number;
@@ -8,13 +10,14 @@ interface Dashboard {
 }
 
 export default async function TodayPage() {
-  const d = await apiIfAllowed<Dashboard>('/v1/dashboard');
+  const [me, d, readiness] = await Promise.all([getMe(), apiIfAllowed<Dashboard>('/v1/dashboard'), apiIfAllowed<Readiness>('/v1/onboarding/readiness')]);
   if (!d) {
     // 시스템 관리자처럼 장부 열람 권한이 없는 역할(관리자라는 이유로 업무자료를 다 보지 않는다)
     return (
       <>
         <h1>오늘의 업무</h1>
         <p className="lead">이 역할에는 후원·재고 업무 현황이 표시되지 않습니다. 관리자라는 이유로 장부·개인정보를 모두 보지 않도록 나눠 두었습니다.</p>
+        {readiness && <ReadinessCard r={readiness} admin />}
         <div className="grid">
           <Link href="/settings" className="tile"><div className="n" style={{ fontSize: 20 }}>기준정보</div><div className="l">법인·시설·창고·품목·기금 등록</div></Link>
           <Link href="/admin/users" className="tile"><div className="n" style={{ fontSize: 20 }}>직원 관리</div><div className="l">직원 계정 만들기·역할 주기. 입력 업무도 하려면 본인에게 후원담당·물품담당 역할을 추가하십시오</div></Link>
@@ -37,6 +40,7 @@ export default async function TodayPage() {
     <>
       <h1>오늘의 업무</h1>
       <p className="lead">{d.businessDate} 기준 · 처리할 일을 먼저 보여 줍니다.</p>
+      {readiness && <ReadinessCard r={readiness} admin={can(me, 'settings.write')} compact />}
       <div className="section-title">처리할 일</div>
       <div className="grid">
         {tasks.map((t) => (

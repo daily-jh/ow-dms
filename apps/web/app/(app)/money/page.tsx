@@ -41,7 +41,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
           <h2>입력 전에 기준정보를 등록해 주세요</h2>
           <p className="msg warn">{!ref.facilities.length && '사용 중인 시설이 없습니다. '}{!ref.funds.length && '사용 중인 기금이 없습니다. '}
             시스템 관리자가 기준정보에서 법인·시설과 기금을 등록해야 후원금을 저장할 수 있습니다.</p>
-          {can(me, 'settings.write') ? <Link className="btn" href="/settings">기준정보 설정하기</Link>
+          {can(me, 'settings.write') ? <Link className="btn" href="/setup">기관 설정하기</Link>
             : <p className="muted">시스템 관리자에게 시설과 기금 등록을 요청해 주세요.</p>}
         </section>
       ))}

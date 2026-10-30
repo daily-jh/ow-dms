@@ -122,6 +122,10 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     const admin = api(await login('a.admin'));
     expect((await admin('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: false })).status).toBe(422);
     expect((await staff('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: true })).status).toBe(403);
+    // 연무 후보는 기관 코드 yeonmu에만 있다
+    expect((await admin('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: true })).status).toBe(404);
+    expect((await admin('GET', '/v1/onboarding/presets/yeonmu')).status).toBe(404);
+    expect((await staff('GET', '/v1/onboarding/readiness')).json).toMatchObject({ presetAvailable: false, canEnterMoney: true });
   });
 
   it('T11 같은 Idempotency-Key 재전송은 같은 결과, 다른 내용은 409', async () => {

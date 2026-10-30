@@ -1,6 +1,7 @@
 import { requirePage } from '@/lib/nav';
 import { api } from '@/lib/api';
-import { applyYeonmuSettings, createMaster, updateMaster } from '@/lib/actions';
+import Link from 'next/link';
+import { createMaster, updateCatalogItem, updateMaster } from '@/lib/actions';
 import { newKey } from '@/lib/format';
 import type { SearchParams } from '../../components';
 import { Flash } from '../../components';
@@ -12,7 +13,25 @@ interface Master {
   warehouses: (Row & { facilityId: string; facilityName: string })[];
   items: (Row & { baseUnit: string; perishable: boolean; inUse: boolean })[];
   funds: (Row & { designated: boolean; purpose: string | null; inUse: boolean })[];
-  preset: { name: string; source: string; funds: { key: string; name: string; designated: boolean; purpose: string | null; sourcePages: string }[]; workflows: { name: string; pages: string; detail: string }[] };
+}
+interface CatalogRow { id: string; kind: 'MANAGEMENT_TYPE' | 'PROGRAM' | 'PARTNER' | 'SCHEDULE'; code: string; name: string; detail: string | null; active: boolean }
+const CATALOG_LABEL: Record<CatalogRow['kind'], string> = { MANAGEMENT_TYPE: '후원 관리유형', PROGRAM: '후원사업', PARTNER: '협력처', SCHEDULE: '업무일정' };
+
+function CatalogActions({ row }: { row: CatalogRow }) {
+  return (
+    <details>
+      <summary style={{ cursor: 'pointer' }}>변경</summary>
+      <form action={updateCatalogItem} className="row" style={{ marginTop: 6 }}>
+        <input type="hidden" name="id" value={row.id} />
+        <input name="name" defaultValue={row.name} aria-label="새 이름" maxLength={80} style={{ width: 180 }} />
+        <button type="submit" className="secondary">이름 저장</button>
+      </form>
+      <form action={updateCatalogItem} style={{ marginTop: 6 }}>
+        <input type="hidden" name="id" value={row.id} /><input type="hidden" name="active" value={row.active ? 'false' : 'true'} />
+        <button type="submit" className={row.active ? 'danger' : 'secondary'}>{row.active ? '사용 중지' : '다시 사용'}</button>
+      </form>
+    </details>
+  );
 }
 
 /** 이름 바꾸기·사용 중지/다시 사용. 거래에 쓰인 기준정보도 지우지 않고 숨긴다. */
@@ -39,7 +58,7 @@ const state = (active: boolean) => (active ? <span className="badge ok">사용</
 export default async function SettingsPage({ searchParams }: { searchParams: SearchParams }) {
   await requirePage('/settings');
   const sp = await searchParams;
-  const m = await api<Master>('/v1/settings/master');
+  const [m, catalog] = await Promise.all([api<Master>('/v1/settings/master'), api<CatalogRow[]>('/v1/settings/catalog')]);
   const activeLegal = m.legalEntities.filter((x) => x.active);
   const activeFacilities = m.facilities.filter((x) => x.active);
   return (
@@ -49,29 +68,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Sea
       <Flash sp={sp} />
 
       <section className="card" style={{ marginBottom: 16 }}>
-        <h2>연무사회복지관 기본 항목 설정</h2>
-        <p>{m.preset.source}의 업무 항목을 참고한 설정 후보입니다. 소속 법인과 지정후원 목적은 기관에서 확인해 주세요.</p>
-        <p className="muted">시설: 연무사회복지관. 계좌·직원·후원자·수혜자·실제 거래는 가져오지 않습니다. 법인 후원과 시설 후원의 회계귀속은 합치지 않습니다.</p>
-        {!activeLegal.length ? <p className="msg warn">먼저 아래 법인·시설에서 실제 소속 주체를 등록해 주세요. 운영법인 명칭을 임의로 생성하지 않습니다.</p> : (
-          <form action={applyYeonmuSettings}>
-            <input type="hidden" name="idempotencyKey" value={newKey('yeonmu-preset')} />
-            <label htmlFor="presetLegalEntity">시설의 실제 소속 주체 *</label>
-            <select id="presetLegalEntity" name="legalEntityId" required defaultValue=""><option value="">소속 선택</option>{activeLegal.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
-            <p>추가할 기금을 선택해 주세요. 지정 조건이 다르면 아래에서 실제 목적에 맞는 기금을 별도로 등록해 주세요.</p>
-            {m.preset.funds.map((f) => <label key={f.key} className="row" style={{ marginBottom: 8 }}>
-              <input type="checkbox" name="fundKeys" value={f.key} defaultChecked={f.key === 'GENERAL'} style={{ width: 'auto' }} />
-              {f.name} · {f.designated ? `지정 / 목적: ${f.purpose}` : '비지정'} (근거 {f.sourcePages}쪽)
-            </label>)}
-            <label className="row" style={{ margin: '14px 0' }}><input type="checkbox" name="reviewed" required style={{ width: 'auto' }} />소속과 선택한 기금의 실제 사용 목적을 확인했습니다.</label>
-            <button type="submit">선택한 기본 항목 추가</button>
-          </form>
-        )}
-        <details style={{ marginTop: 16 }}><summary>인수인계서 업무·서식 연결 보기</summary>
-          <table><thead><tr><th>업무</th><th>설정·서식 및 지원 범위</th><th>근거 쪽</th></tr></thead>
-            <tbody>{m.preset.workflows.map((w) => <tr key={w.name}><td>{w.name}</td><td>{w.detail}</td><td>{w.pages}</td></tr>)}</tbody>
-          </table>
-          <p className="muted">내부 관행을 법정 기준으로 자동 적용하지 않습니다. 기관 서식 원본·발급 자격·외부 연계는 별도 검증이 필요합니다.</p>
-        </details>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <div><h2>기관 설정</h2><p className="muted" style={{ margin: 0 }}>준비 상태 확인과 기관 기본 항목 한 번에 추가는 기관 설정 화면에서 합니다.</p></div>
+          <Link className="btn secondary" href="/setup">기관 설정 열기</Link>
+        </div>
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -144,6 +144,21 @@ export default async function SettingsPage({ searchParams }: { searchParams: Sea
           <thead><tr><th>기금</th><th>구분</th><th>목적</th><th>상태</th><th></th></tr></thead>
           <tbody>{m.funds.map((f) => <tr key={f.id}><td>{f.name}</td><td>{f.designated ? '지정' : '비지정'}</td><td>{f.purpose ?? '-'}</td><td>{state(f.active)}{f.inUse && <span className="muted"> · 거래 있음</span>}</td><td><RowActions kind="funds" row={f} /></td></tr>)}</tbody>
         </table>
+      </section>
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h2>업무 분류(관리유형·사업·협력처·일정)</h2>
+        <p className="muted">기관 설정에서 추가한 분류입니다. 기금과 별개이며, 코드는 바꾸지 않고 이름·사용 여부만 고칩니다.</p>
+        {!catalog.length ? <p className="muted">아직 등록된 분류가 없습니다.</p> : (Object.keys(CATALOG_LABEL) as CatalogRow['kind'][]).map((k) => {
+          const rows = catalog.filter((c) => c.kind === k);
+          return rows.length ? (
+            <details key={k} style={{ marginTop: 8 }}>
+              <summary style={{ cursor: 'pointer' }}>{CATALOG_LABEL[k]} <span className="muted">· {rows.filter((r) => r.active).length}개 사용</span></summary>
+              <table><thead><tr><th>이름</th><th>코드</th><th>내용</th><th>상태</th><th></th></tr></thead>
+                <tbody>{rows.map((c) => <tr key={c.id}><td>{c.name}</td><td className="muted">{c.code}</td><td>{c.detail ?? '-'}</td><td>{state(c.active)}</td><td><CatalogActions row={c} /></td></tr>)}</tbody>
+              </table>
+            </details>
+          ) : null;
+        })}
       </section>
     </>
   );

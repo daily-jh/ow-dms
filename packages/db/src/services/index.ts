@@ -16,3 +16,4 @@ export * from './closing';
 export * from './settings';
 export * from './imports';
 export * from './pledges';
+export * from './onboarding';

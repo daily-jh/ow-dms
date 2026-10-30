@@ -5,7 +5,7 @@ import {
   ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
   RequestCorrectionRequest, CreateLegalEntityRequest, CreateFacilityRequest, CreateWarehouseRequest, CreateItemRequest, CreateFundRequest,
   UpdateMasterRequest, MasterKindParam, ImportBankStatementRequest, ImportMoneySheetRequest, BankReceiptRequest,
-  ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest, ApplyYeonmuPresetRequest,
+  ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest, ApplyYeonmuPresetRequest, UpdateCatalogItemRequest,
 } from '@owdms/contracts';
 import {
   confirmTransaction, confirmCorrection, confirmPendingCorrection, capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
@@ -16,6 +16,7 @@ import {
   createItem, createFund, updateMaster, applyYeonmuPreset, importBankStatement, importMoneySheet, listBankTransactions, listImportBatches,
   createReceiptFromBank, excludeBankTransaction, reopenBankTransaction, type BankTxView,
   createPledge, endPledge, listPledges, type PledgeView,
+  onboardingReadiness, yeonmuPresetPreview, listCatalog, updateCatalogItem,
 } from '@owdms/db';
 import { DomainError } from '@owdms/domain';
 import { z } from 'zod';
@@ -53,6 +54,28 @@ export class LedgerController {
       const funds = await db.query('select id, name, designated from funds where active order by designated, name');
       return { facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows };
     });
+  }
+
+  /** 업무 시작 전 준비 상태(무엇이 비었는지). */
+  @Get('onboarding/readiness')
+  readiness(@Req() req: Request) {
+    return this.rt.tx(req, (db, ctx) => onboardingReadiness(db, ctx));
+  }
+
+  @Get('onboarding/presets/yeonmu')
+  yeonmuPreview(@Req() req: Request) {
+    return this.rt.tx(req, (db, ctx) => yeonmuPresetPreview(db, ctx));
+  }
+
+  @Get('settings/catalog')
+  catalog(@Req() req: Request) {
+    return this.rt.tx(req, (db, ctx) => listCatalog(db, ctx));
+  }
+
+  @Post('settings/catalog/:id')
+  updateCatalog(@Req() req: Request, @Param('id') cid: string, @Body() body: unknown) {
+    const input = UpdateCatalogItemRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => updateCatalogItem(db, ctx, id(cid), input));
   }
 
   @Post('settings/presets/yeonmu')

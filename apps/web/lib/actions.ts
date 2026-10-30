@@ -153,10 +153,27 @@ export async function reopenPeriod(form: FormData) {
 
 // ───────────── 기준정보(시스템 관리자) ─────────────
 export async function applyYeonmuSettings(form: FormData) {
-  await run('/settings', () => api('/v1/settings/presets/yeonmu', {
+  const legal = s(form, 'legalEntityId');
+  const isNew = legal === 'new';
+  await run('/setup', () => api('/v1/settings/presets/yeonmu', {
     method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
-    body: { legalEntityId: s(form, 'legalEntityId'), fundKeys: form.getAll('fundKeys'), reviewed: form.get('reviewed') === 'on' },
+    body: {
+      legalEntityId: isNew ? null : legal,
+      newLegalEntity: isNew ? { name: s(form, 'newLegalName'), kind: s(form, 'newLegalKind') ?? 'CORPORATION' } : null,
+      fundKeys: form.getAll('fundKeys'),
+      managementTypeCodes: form.getAll('managementTypes'), programCodes: form.getAll('programs'),
+      partnerCodes: form.getAll('partners'), scheduleCodes: form.getAll('schedules'),
+      reviewed: form.get('reviewed') === 'on',
+    },
   }), '연무 기본 항목을 확인·추가했습니다. 기존 설정과 거래는 변경하지 않았습니다.');
+}
+
+export async function updateCatalogItem(form: FormData) {
+  const id = s(form, 'id') ?? '';
+  const body: Record<string, unknown> = {};
+  if (s(form, 'name')) body.name = s(form, 'name');
+  if (s(form, 'active')) body.active = s(form, 'active') === 'true';
+  await run('/settings', () => api(`/v1/settings/catalog/${encodeURIComponent(id)}`, { method: 'POST', body }), `${s(form, 'name') ?? '업무 분류'} 저장했습니다.`);
 }
 
 export async function createMaster(form: FormData) {
