@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import Link from 'next/link';
 import { api, can, type Me } from '@/lib/api';
 import { closePeriod, reopenPeriod } from '@/lib/actions';
@@ -14,10 +15,11 @@ interface Checklist {
 const fmt = (iso: string) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
 export default async function ClosingPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/closing');
   const sp = await searchParams;
   const current = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date());
   const period = typeof sp.period === 'string' && /^\d{4}-\d{2}$/.test(sp.period) ? sp.period : current;
-  const [me, c] = await Promise.all([api<Me>('/v1/auth/me'), api<Checklist>(`/v1/period-closures/${period}`)]);
+  const [me, c] = await Promise.all([getMe(), api<Checklist>(`/v1/period-closures/${period}`)]);
   const canDecide = can(me, 'approval.decide');
   return (
     <>
@@ -35,7 +37,7 @@ export default async function ClosingPage({ searchParams }: { searchParams: Sear
         <div className="tile"><div className="n">{c.totals.distributionsPosted}건</div><div className="l">출고 반영된 배분</div></div>
       </div>
       <table>
-        <thead><tr><th>점검 항목</th><th>건수</th><th>구분</th><th></th></tr></thead>
+        <thead><tr><th>점검 항목</th><th className="num">건수</th><th>구분</th><th></th></tr></thead>
         <tbody>
           {c.items.map((i) => (
             <tr key={i.code}>

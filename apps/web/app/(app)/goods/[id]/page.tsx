@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import { api, can, type Me } from '@/lib/api';
 import { generateDocument, requestApproval, requestCorrection } from '@/lib/actions';
 import { CORRECTION_LABEL, won, VALUATION_LABEL } from '@/lib/format';
@@ -13,10 +14,11 @@ interface Correction { id: string; kind: string; reason: string; status: string;
 interface Doc { id: string; title: string; isDraft: boolean; generatedAt: string; auto: boolean; sourceVersion: number }
 
 export default async function GoodsDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
+  await requirePage('/goods/detail');
   const { id } = await params;
   const sp = await searchParams;
   const [me, r, docs, corrections] = await Promise.all([
-    api<Me>('/v1/auth/me'), api<Receipt>(`/v1/goods-receipts/${id}`), api<Doc[]>(`/v1/documents?sourceId=${id}`), api<Correction[]>(`/v1/corrections?targetId=${id}`),
+    getMe(), api<Receipt>(`/v1/goods-receipts/${id}`), api<Doc[]>(`/v1/documents?sourceId=${id}`), api<Correction[]>(`/v1/corrections?targetId=${id}`),
   ]);
   return (
     <>
@@ -25,7 +27,7 @@ export default async function GoodsDetail({ params, searchParams }: { params: Pr
       <Flash sp={sp} />
       <div className="card">
         <table>
-          <thead><tr><th>No</th><th>품목</th><th>수량</th><th>창고</th><th>유효기한</th><th>가액</th><th>로트</th></tr></thead>
+          <thead><tr><th className="num">No</th><th>품목</th><th className="num">수량</th><th>창고</th><th>유효기한</th><th>가액</th><th>로트</th></tr></thead>
           <tbody>
             {r.lines.map((l) => (
               <tr key={l.lineNo}>

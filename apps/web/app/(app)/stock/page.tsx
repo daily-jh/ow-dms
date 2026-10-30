@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { createDistribution } from '@/lib/actions';
 import { newKey } from '@/lib/format';
@@ -7,6 +8,7 @@ interface Lot { lotId: string; warehouseId: string; lotCode: string; itemName: s
 interface Ref { facilities: { id: string; name: string }[] }
 
 export default async function StockPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/stock');
   const sp = await searchParams;
   const [lots, ref] = await Promise.all([api<Lot[]>('/v1/stock'), api<Ref>('/v1/reference-data')]);
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -16,7 +18,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
       <p className="lead">유효기한이 빠른 로트부터 보여 줍니다. 가용량 = 현재고 − 승인된 예약. 출고는 승인 후 배분 목록에서 반영합니다.</p>
       <Flash sp={sp} />
       <table>
-        <thead><tr><th>품목</th><th>로트</th><th>창고</th><th>유효기한</th><th>현재고</th><th>예약</th><th>가용</th><th>배분 초안</th></tr></thead>
+        <thead><tr><th>품목</th><th>로트</th><th>창고</th><th>유효기한</th><th className="num">현재고</th><th className="num">예약</th><th className="num">가용</th><th>배분 초안</th></tr></thead>
         <tbody>
           {lots.map((l) => (
             <tr key={`${l.lotId}:${l.warehouseId}`}>

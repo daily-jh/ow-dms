@@ -1,4 +1,6 @@
+import { requirePage } from '@/lib/nav';
 export default async function DocumentView({ params }: { params: Promise<{ id: string }> }) {
+  await requirePage('/documents/detail');
   const { id } = await params;
   return (
     <>

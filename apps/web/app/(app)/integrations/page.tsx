@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import { api, apiIfAllowed, can, type Me } from '@/lib/api';
 import { createBatch } from '@/lib/actions';
 import { newKey } from '@/lib/format';
@@ -8,9 +9,10 @@ interface Batch { id: string; operation: string; mode: string; createdAt: string
 interface Receipt { id: string; receivedOn: string; status: string; donorName: string | null; lineCount: number }
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/integrations');
   const sp = await searchParams;
   const [me, caps, batches, receipts] = await Promise.all([
-    api<Me>('/v1/auth/me'), api<Cap[]>('/v1/integrations/capabilities'), api<Batch[]>('/v1/integration-batches'),
+    getMe(), api<Cap[]>('/v1/integrations/capabilities'), api<Batch[]>('/v1/integration-batches'),
     apiIfAllowed<Receipt[]>('/v1/goods-receipts?status=APPROVED'),
   ]);
   return (

@@ -15,7 +15,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Sear
   return (
     <>
     <DemoBanner />
-    <main style={{ maxWidth: 720, margin: '32px auto' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', paddingTop: 40 }}>
+      {!blocked && <p style={{ margin: '0 0 16px' }}><Link href="/">‹ 업무 화면으로</Link></p>}
       <h1>내 계정</h1>
       <p className="lead">{me.displayName} · {me.username} · {me.tenantName} · {me.roleLabels.join(', ')}</p>
       <Flash sp={sp} />
@@ -27,12 +28,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Sear
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h2>비밀번호 변경{mustChangePassword && <span className="badge warn" style={{ marginLeft: 8 }}>필요</span>}</h2>
-        <form action={changePassword} style={{ display: 'grid', gap: 10, maxWidth: 420 }}>
+        <form action={changePassword} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
           <label>현재 비밀번호(임시 비밀번호)<input name="currentPassword" type="password" autoComplete="current-password" required /></label>
           <label>새 비밀번호<input name="newPassword" type="password" autoComplete="new-password" required minLength={10} maxLength={128} /></label>
           <label>새 비밀번호 확인<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={10} maxLength={128} /></label>
           <p className="muted" style={{ margin: 0 }}>10자 이상. 문장처럼 길게 정하면 기억하기 쉽고 안전합니다. 아이디가 들어가거나 흔한 비밀번호는 쓸 수 없습니다.</p>
-          <button type="submit">비밀번호 바꾸기</button>
+          <div><button type="submit">비밀번호 바꾸기</button></div>
         </form>
       </section>
 
@@ -48,7 +49,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Sear
       </section>
 
       <div className="row">
-        {!blocked && <Link href="/">업무 화면으로</Link>}
         <form action={logout}><button className="secondary" type="submit">로그아웃</button></form>
       </div>
     </main>

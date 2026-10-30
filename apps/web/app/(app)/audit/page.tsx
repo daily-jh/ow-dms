@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { apiIfAllowed } from '@/lib/api';
 import type { SearchParams } from '../../components';
 import { Status } from '../../components';
@@ -7,6 +8,7 @@ interface Event { id: string; category: string; action: string; resourceType: st
 const CATEGORIES = { '': '전체', LEDGER: '원장·업무', ACCESS: '조회·출력', AUTH: '로그인', ADMIN: '관리' } as const;
 
 export default async function AuditPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/audit');
   const sp = await searchParams;
   const category = typeof sp.category === 'string' && sp.category in CATEGORIES ? sp.category : '';
   const events = await apiIfAllowed<Event[]>(`/v1/audit-events${category ? `?category=${category}` : ''}`);

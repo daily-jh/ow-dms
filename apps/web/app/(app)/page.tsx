@@ -14,8 +14,12 @@ export default async function TodayPage() {
     return (
       <>
         <h1>오늘의 업무</h1>
-        <p className="lead">이 역할에는 후원·재고 업무 현황이 표시되지 않습니다. 왼쪽 메뉴에서 맡은 일을 선택하십시오.</p>
-        <p><Link href="/settings">기준정보</Link> · <Link href="/admin/users">직원 관리</Link> · <Link href="/account">내 계정</Link></p>
+        <p className="lead">이 역할에는 후원·재고 업무 현황이 표시되지 않습니다. 관리자라는 이유로 장부·개인정보를 모두 보지 않도록 나눠 두었습니다.</p>
+        <div className="grid">
+          <Link href="/settings" className="tile"><div className="n" style={{ fontSize: 20 }}>기준정보</div><div className="l">법인·시설·창고·품목·기금 등록</div></Link>
+          <Link href="/admin/users" className="tile"><div className="n" style={{ fontSize: 20 }}>직원 관리</div><div className="l">직원 계정 만들기·역할 주기. 입력 업무도 하려면 본인에게 후원담당·물품담당 역할을 추가하십시오</div></Link>
+          <Link href="/account" className="tile"><div className="n" style={{ fontSize: 20 }}>내 계정</div><div className="l">비밀번호·2단계 인증</div></Link>
+        </div>
       </>
     );
   }
@@ -31,14 +35,16 @@ export default async function TodayPage() {
     <>
       <h1>오늘의 업무</h1>
       <p className="lead">{d.businessDate} 기준 · 처리할 일을 먼저 보여 줍니다.</p>
-      <div className="grid" style={{ marginBottom: 20 }}>
+      <div className="section-title">처리할 일</div>
+      <div className="grid">
         {tasks.map((t) => (
           <Link key={t.l} href={t.href} className={`tile ${t.n > 0 ? 'attn' : ''}`}>
             <div className="n">{t.n}</div>
-            <div className="l">{t.l}{t.n > 0 ? ' · 확인 필요' : ''}</div>
+            <div className="l">{t.l}</div>
           </Link>
         ))}
       </div>
+      <div className="section-title">이번 달</div>
       <div className="grid">
         <div className="tile"><div className="n">{won(d.monthConfirmedIncome)}</div><div className="l">이번 달 승인된 후원금 수납(수납일 기준)</div></div>
         <div className="tile"><div className="n">{d.monthGoodsReceipts}건</div><div className="l">이번 달 승인된 후원품 수입(헤더 건수)</div></div>

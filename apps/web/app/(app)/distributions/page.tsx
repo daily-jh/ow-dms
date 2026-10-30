@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { generateDocument, postDistribution, requestApproval, requestCorrection } from '@/lib/actions';
 import { CorrectionForm, Flash, Status, type SearchParams } from '../../components';
@@ -5,6 +6,7 @@ import { CorrectionForm, Flash, Status, type SearchParams } from '../../componen
 interface Dist { id: string; programName: string; plannedOn: string; status: string; version: number; recipientRef: string | null; totalQuantity: string }
 
 export default async function DistributionsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/distributions');
   const sp = await searchParams;
   const rows = await api<Dist[]>('/v1/distributions');
   return (
@@ -13,7 +15,7 @@ export default async function DistributionsPage({ searchParams }: { searchParams
       <p className="lead">초안 → 승인(예약 확보) → 출고 반영(원장 차감) 순서입니다. 전달확인은 별도 증빙으로 관리합니다.</p>
       <Flash sp={sp} />
       <table>
-        <thead><tr><th>예정일</th><th>사업</th><th>대상자 ID</th><th>수량</th><th>상태</th><th>작업</th></tr></thead>
+        <thead><tr><th>예정일</th><th>사업</th><th>대상자 ID</th><th className="num">수량</th><th>상태</th><th>작업</th></tr></thead>
         <tbody>
           {rows.map((d) => (
             <tr key={d.id}>

@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { createMaster, updateMaster } from '@/lib/actions';
 import { newKey } from '@/lib/format';
@@ -35,6 +36,7 @@ function RowActions({ kind, row }: { kind: string; row: Row }) {
 const state = (active: boolean) => (active ? <span className="badge ok">사용</span> : <span className="badge info">중지</span>);
 
 export default async function SettingsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/settings');
   const sp = await searchParams;
   const m = await api<Master>('/v1/settings/master');
   const activeLegal = m.legalEntities.filter((x) => x.active);

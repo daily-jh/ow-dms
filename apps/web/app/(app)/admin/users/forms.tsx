@@ -26,11 +26,11 @@ export function CreateUserForm() {
         <label style={{ flex: 1 }}>아이디(영문 소문자·숫자·._- 3~32자)<input name="username" required pattern="[a-zA-Z0-9][a-zA-Z0-9._\-]{2,31}" autoCapitalize="none" /></label>
         <label style={{ flex: 1 }}>이름<input name="displayName" required maxLength={40} /></label>
       </div>
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+      <fieldset style={{ border: 0, padding: 0, margin: 0, background: 'transparent' }}>
         <legend className="muted" style={{ fontSize: 13 }}>역할(1개 이상)</legend>
         <div className="row" style={{ flexWrap: 'wrap' }}>
           {ROLE_OPTIONS.map(([v, l]) => (
-            <label key={v} className="row" style={{ color: 'var(--text)', margin: 0, width: 'auto' }}>
+            <label key={v} className="chip">
               <input type="checkbox" name="roles" value={v} style={{ width: 'auto' }} /> {l}
             </label>
           ))}
