@@ -8,6 +8,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @owdms/web build
 
 FROM node:24-slim
+LABEL org.opencontainers.image.source=https://github.com/daily-jh/ow-dms
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY --from=build --chown=node:node /app /app

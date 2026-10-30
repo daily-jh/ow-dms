@@ -86,6 +86,7 @@ jobs:
             echo PII_ENCRYPTION_KEY=$(openssl rand -base64 32)
             echo BACKUP_PASSPHRASE=$(openssl rand -hex 24)
             echo BACKUP_DIR=$RUNNER_TEMP/backups
+            echo OWDMS_IMAGE=owdms:prod
           } > infra/.env
           mkdir -p $RUNNER_TEMP/backups
           docker compose -f infra/compose.prod.yaml up -d --no-build db bootstrap api worker web backup

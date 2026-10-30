@@ -8,7 +8,7 @@
 
 | 항목 | 권장 |
 |---|---|
-| 서버 | **국내 리전** 클라우드 서버 1대(네이버클라우드·NHN Cloud·KT Cloud 등), Ubuntu 24.04, 2 vCPU·4GB 메모리 이상, 디스크 50GB 이상. 요금은 각 업체 요금표에서 확인 |
+| 서버 | **국내 리전** 클라우드 서버 1대(네이버클라우드·NHN Cloud·KT Cloud 등), Ubuntu 24.04. 권장 2 vCPU·4GB 이상. 소규모 시작은 1 vCPU·1GB(예: 네이버클라우드 Micro)도 가능합니다(아래 참고). 요금은 각 업체 요금표에서 확인 |
 | 도메인 | 기관 도메인의 하위 주소(예: `donation.기관도메인`) 하나. DNS A 레코드를 서버 공인 IP로 지정 |
 | 방화벽(업체 콘솔의 ACG·보안그룹) | 80·443은 전체 허용, 22(SSH)는 **기관 사무실 IP만** 허용 |
 | 보관 장소 | 백업 암호·암호화 키를 서버 밖에 보관할 곳(기관 금고, 비밀번호 관리 프로그램) |
@@ -26,7 +26,14 @@ curl -fsSL https://raw.githubusercontent.com/daily-jh/ow-dms/main/infra/server-s
 1. 도커 설치
 2. 코드 내려받기(`/opt/ow-dms`)
 3. 비밀값 자동 생성(`/opt/ow-dms/infra/.env`, 관리자만 읽기)
-4. 빌드·실행: DB, API, 작업 처리기, 화면, HTTPS, 매일 백업
+4. 메모리가 3GB 미만이고 스왑이 없으면 2GB 스왑 파일(`/swapfile`) 생성
+5. 실행: GitHub에서 미리 만든 이미지(`ghcr.io/daily-jh/ow-dms:latest`)를 내려받아 DB, API, 작업 처리기, 화면, HTTPS, 매일 백업을 띄웁니다. 내려받기에 실패하면 서버에서 직접 빌드합니다(1GB 서버에서는 매우 느리거나 실패할 수 있음)
+
+### 작은 서버(1GB 메모리)에서 운영할 때
+- 실측(합성자료, 유휴 상태) 기준 전체 약 355MB를 씁니다(화면 56MB, API 138MB, 작업 처리기 92MB, DB 67MB). 동시 사용자가 적은 단일 기관이면 1GB + 스왑 2GB로 시작할 수 있습니다.
+- 서버에서 빌드하지 않도록 미리 만든 이미지를 씁니다. 이미지는 `main`에 병합될 때 GitHub Actions(`.github/workflows/image.yml`)가 만듭니다. 내려받기가 거부되면 저장소 관리자가 GitHub의 Packages → `ow-dms` → Package settings에서 공개(Public)로 바꾸십시오. 이미지에는 코드만 있고 비밀값·자료는 없습니다.
+- 특정 버전에 고정하려면 `infra/.env`에 `OWDMS_IMAGE=ghcr.io/daily-jh/ow-dms:<커밋번호>`를 넣습니다.
+- 느려지거나 메모리 부족 기록이 보이면 업체 콘솔에서 서버 사양을 올리십시오(자료는 유지됩니다).
 
 설치가 끝나면 **`BACKUP_PASSPHRASE`와 `PII_ENCRYPTION_KEY`가 한 번 표시됩니다.** 그 자리에서 서버 밖 안전한 곳에 옮겨 적으십시오.
 - 서버가 망가지면 이 두 값 없이는 백업을 열 수 없고, 후원자 연락처와 OTP 정보도 복호화할 수 없습니다.

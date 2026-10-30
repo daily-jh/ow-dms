@@ -19,6 +19,17 @@ apt-get update -q
 apt-get install -y -q docker.io docker-compose-v2 git openssl curl ca-certificates
 systemctl enable --now docker
 
+# 메모리가 작은 서버(예: 1GB)는 스왑을 잡아 둔다(없을 때만 2GB).
+mem_mb=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+if [ "$mem_mb" -lt 3000 ] && [ "$(swapon --noheadings | wc -l)" -eq 0 ]; then
+  echo "메모리 ${mem_mb}MB: 스왑 2GB 설정"
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile > /dev/null
+  swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 echo "[2/5] 코드 내려받기·갱신: $APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" pull --ff-only
@@ -52,8 +63,14 @@ if [ ! -f "$ENV_FILE" ]; then
   chmod 600 "$ENV_FILE"
 fi
 
-echo "[4/5] 빌드·실행(처음은 10분 안팎 걸릴 수 있습니다)"
-$COMPOSE up -d --build
+echo "[4/5] 이미지 받기·실행"
+# GitHub에서 미리 만든 이미지를 받는다. 받을 수 없으면(비공개·네트워크 문제) 이 서버에서 직접 빌드한다.
+if $COMPOSE pull --quiet; then
+  $COMPOSE up -d --no-build
+else
+  echo "미리 만든 이미지를 받지 못해 이 서버에서 빌드합니다(10분 이상 걸릴 수 있습니다)."
+  $COMPOSE up -d --build
+fi
 
 echo "[5/5] 상태"
 $COMPOSE ps --format '{{.Service}}: {{.Status}}'

@@ -28,7 +28,7 @@ services:
   # 시작 시 1회: migration → 앱 계정 비밀번호 교체(합성자료는 넣지 않음)
   bootstrap:
     build: { context: .., dockerfile: Dockerfile }
-    image: owdms:prod
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
     environment:
       <<: *common
       MIGRATION_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/owdms
@@ -40,7 +40,7 @@ services:
     restart: "no"
 
   api:
-    image: owdms:prod
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
     restart: unless-stopped
     environment:
       <<: *common
@@ -53,7 +53,7 @@ services:
       bootstrap: { condition: service_completed_successfully }
 
   worker:
-    image: owdms:prod
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
     restart: unless-stopped
     environment: *common
     working_dir: /app/apps/worker
@@ -62,7 +62,7 @@ services:
       bootstrap: { condition: service_completed_successfully }
 
   web:
-    image: owdms:prod
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production

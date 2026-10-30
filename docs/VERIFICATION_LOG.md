@@ -96,3 +96,12 @@
 | 복원 | 백업 후 계정 추가 → api·worker·web 중지 → `restore` → 추가 계정 사라지고 백업 시점 계정만 남음, 재시작 후 로그인 API 정상 |
 | 설치 스크립트(`infra/server-setup.sh`) | 깨끗한 Ubuntu 24.04 컨테이너(도커 실행은 대체): 주소 미지정 시 중단, 비밀값 600 권한 생성, 백업 폴더 700, 보관할 두 값 1회 표시 |
 | CI | `prod-backup` 작업 추가(개발 로그인 404, 백업·복원 점검), 로컬에서 같은 스크립트 통과 |
+
+## 2026-10-30 — 작은 서버(1GB) 대응 (5차 보완)
+환경: 위와 동일
+
+| 검사 | 결과 |
+|---|---|
+| 운영 구성 메모리(`docker stats`, 합성자료·유휴) | web 56MB, api 138MB, worker 92MB, db 67MB, backup 1MB, 합계 약 355MB → 1GB + 스왑 2GB로 실행 가능 판단(서버에서 빌드하지 않는 조건) |
+| 미리 만든 이미지 | `.github/workflows/image.yml`: main 병합 시 GHCR(`ghcr.io/daily-jh/ow-dms`)에 `latest`·커밋 태그로 게시. `compose.prod.yaml`은 `OWDMS_IMAGE`(기본 GHCR latest) 사용, 로컬 이미지 지정으로 기동 확인 |
+| 설치 스크립트 | 메모리 3GB 미만·스왑 없음이면 2GB 스왑 생성, 이미지 내려받기 실패 시 직접 빌드로 전환 |
