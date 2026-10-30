@@ -8,7 +8,7 @@ export default async function OtpPage({ searchParams }: { searchParams: SearchPa
   return (
     <main className="auth-page">
       <div className="auth-box">
-      <div className="brand-mark" aria-hidden="true">O</div>
+      <div className="brand-mark" aria-hidden="true">OW</div>
       <h1>2단계 인증</h1>
       <p className="lead">휴대폰 OTP 앱(Google Authenticator, Microsoft Authenticator 등)에 표시된 6자리 숫자를 입력하십시오.</p>
       <Flash sp={sp} />
