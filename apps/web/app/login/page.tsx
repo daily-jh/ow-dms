@@ -1,4 +1,6 @@
 import { devLogin } from '@/lib/actions';
+import { passwordLogin } from '@/lib/auth-actions';
+import { DEV_LOGIN } from '@/lib/api';
 import type { SearchParams } from '../components';
 import { DEMO_MODE, DemoBanner, Flash } from '../components';
 
@@ -18,19 +20,30 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
     <>
     <DemoBanner />
     <main style={{ maxWidth: 640, margin: '40px auto' }}>
-      <h1>OW-DMS {DEMO_MODE ? '시연용' : '개발용'} 로그인</h1>
-      <p className="lead">합성(가상) 기관·계정입니다. 실제 개인정보를 입력하지 마십시오. 운영에서는 기관 IdP(OIDC) 로그인으로 대체됩니다.</p>
-      {sp.expired && <p className="msg warn">세션이 만료되었거나 권한이 회수되었습니다.</p>}
+      <h1>OW-DMS 로그인</h1>
+      {sp.expired && <p className="msg warn">세션이 만료되었거나 권한이 회수되었습니다. 다시 로그인하십시오.</p>}
       <Flash sp={sp} />
-      <div className="card">
-        {ACCOUNTS.map(([username, name, desc]) => (
-          <form key={username} action={devLogin} className="row" style={{ justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-            <input type="hidden" name="username" value={username} />
-            <span><strong>{name}(가상)</strong> <span className="muted">{desc} · {username}</span></span>
-            <button type="submit">이 계정으로 로그인</button>
-          </form>
-        ))}
-      </div>
+      <form action={passwordLogin} className="card" style={{ display: 'grid', gap: 10 }}>
+        <label>아이디<input name="username" autoComplete="username" required maxLength={64} autoCapitalize="none" /></label>
+        <label>비밀번호<input name="password" type="password" autoComplete="current-password" required maxLength={256} /></label>
+        <button type="submit">로그인</button>
+        <p className="muted" style={{ margin: 0 }}>계정은 기관 관리자가 만들어 줍니다. 비밀번호를 잊었거나 잠겼으면 기관 관리자에게 초기화를 요청하십시오.</p>
+      </form>
+      {DEV_LOGIN && (
+        <>
+          <h2 style={{ marginTop: 28 }}>{DEMO_MODE ? '시연용' : '개발용'} 합성 계정</h2>
+          <p className="lead">합성(가상) 기관·계정입니다. 실제 개인정보를 입력하지 마십시오.</p>
+          <div className="card">
+            {ACCOUNTS.map(([username, name, desc]) => (
+              <form key={username} action={devLogin} className="row" style={{ justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                <input type="hidden" name="username" value={username} />
+                <span><strong>{name}(가상)</strong> <span className="muted">{desc} · {username}</span></span>
+                <button type="submit">이 계정으로 로그인</button>
+              </form>
+            ))}
+          </div>
+        </>
+      )}
     </main>
     </>
   );

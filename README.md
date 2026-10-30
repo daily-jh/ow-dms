@@ -34,6 +34,8 @@ pnpm dev:worker
 pnpm dev:web      # :3000 → 합성 계정(a.goods, a.approver …)으로 로그인
 ```
 
+실제 로그인 시험: `cd packages/db && npx tsx src/cli.ts create-admin <기관코드> <기관이름> <아이디> <이름>`으로 첫 관리자를 만들면 임시 비밀번호가 한 번 표시됩니다. 첫 로그인 때 비밀번호 변경과 OTP 등록(운영 필수)을 하고, **직원 관리**에서 직원 계정을 만듭니다.
+
 시험 계정 흐름: `a.goods`로 후원품 입력·승인요청 → `a.approver`로 승인 → `a.goods`로 재고 확인·인수증 미리보기 → `b.goods`로 로그인하면 A기관 자료가 보이지 않습니다.
 
 ## 검사

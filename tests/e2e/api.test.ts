@@ -15,7 +15,7 @@ beforeAll(async () => {
   scenario = db.scenario;
   pools = [db.owner, db.app];
   ({ app } = await createApp({
-    databaseUrl: db.appUrl, sessionSecret: 'test-secret-test-secret-test-secret!!', devLoginEnabled: true,
+    databaseUrl: db.appUrl, sessionSecret: 'test-secret-test-secret-test-secret!!', devLoginEnabled: true, demoMode: false, requireMfa: false,
     piiKey: Buffer.alloc(32, 7).toString('base64'), port: 0,
   }));
   await app.listen(0);

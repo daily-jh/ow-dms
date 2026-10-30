@@ -4,7 +4,8 @@ import { NestFactory } from '@nestjs/core';
 import type { NextFunction, Request, Response } from 'express';
 import { createPool } from '@owdms/db';
 import { loadConfig, type ApiConfig } from './config';
-import { AuthController, HealthController, LedgerController } from './controllers';
+import { HealthController, LedgerController } from './controllers';
+import { AdminController, AuthController } from './auth.controllers';
 import { ErrorFilter, requestId } from './http';
 import { RUNTIME, Runtime } from './runtime';
 
@@ -12,7 +13,7 @@ export async function createApp(config: ApiConfig = loadConfig()): Promise<{ app
   const runtime = new Runtime(createPool(config.databaseUrl), config);
 
   @Module({
-    controllers: [HealthController, AuthController, LedgerController],
+    controllers: [HealthController, AuthController, AdminController, LedgerController],
     providers: [{ provide: RUNTIME, useValue: runtime }],
   })
   class AppModule {}

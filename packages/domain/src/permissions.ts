@@ -1,3 +1,4 @@
+import { DomainError } from './errors';
 /**
  * 역할별 기본 허용 동작(제안). 실제 판정은 서버에서 기관+시설+자원+동작+필드로 수행하며
  * 이 표는 그중 '동작' 축이다. 화면 숨김만으로 권한을 구현하지 않는다.
@@ -29,7 +30,8 @@ export type Action =
   | 'integration.prepare'
   | 'integration.read'
   | 'audit.read'
-  | 'settings.write';
+  | 'settings.write'
+  | 'user.manage';
 
 export const ROLE_LABEL: Record<Role, string> = {
   DONATION_STAFF: '후원담당',
@@ -56,11 +58,21 @@ export const ROLE_ACTIONS: Record<Role, readonly Action[]> = {
   APPROVER: ['donor.read', 'money.read', 'goods.read', 'approval.decide', 'document.read', 'integration.read'],
   RECEIPT_STAFF: ['donor.read', 'donor.tax.read', 'money.read', 'document.read'],
   // 관리자라는 이유로 개인정보 전체 열람을 허용하지 않는다.
-  INSTITUTION_ADMIN: ['donor.read', 'settings.write', 'audit.read'],
+  INSTITUTION_ADMIN: ['donor.read', 'settings.write', 'audit.read', 'user.manage'],
   AUDITOR: ['audit.read', 'donor.read', 'money.read', 'goods.read', 'document.read', 'integration.read'],
   SYSTEM_WORKER: ['goods.read', 'money.read', 'document.generate', 'document.read'],
 };
 
 export function rolesAllow(roles: readonly Role[], action: Action): boolean {
   return roles.some((r) => ROLE_ACTIONS[r]?.includes(action));
+}
+
+/** 사람에게 줄 수 있는 역할(시스템 작업 계정 제외). 1개 이상, 중복 없이. */
+export const ASSIGNABLE_ROLES: readonly Role[] = [
+  'DONATION_STAFF', 'GOODS_STAFF', 'ACCOUNTING', 'APPROVER', 'RECEIPT_STAFF', 'INSTITUTION_ADMIN', 'AUDITOR',
+];
+
+export function requireRoleList(roles: readonly string[]): void {
+  const ok = roles.length > 0 && new Set(roles).size === roles.length && roles.every((r) => (ASSIGNABLE_ROLES as readonly string[]).includes(r));
+  if (!ok) throw new DomainError('VALIDATION_FAILED', '역할을 1개 이상 올바르게 고르십시오.', { roles: '역할 선택 필요' });
 }

@@ -3,3 +3,4 @@ export * from './migrate';
 export * from './seed';
 export * from './services';
 export * from './bootstrap';
+export * from './admin';

@@ -7,6 +7,8 @@
 | tenants | code, name | 기관 |
 | users | username, display_name, disabled_at | 전역. 같은 기관 구성원만 조회(RLS) |
 | memberships | tenant_id, user_id, roles[], self_approval_exception, valid_from/to, revoked_at | 매 요청 재확인 |
+| user_credentials | password_hash(scrypt), must_change, totp_secret_enc(AES-256-GCM), totp_enabled_at, totp_last_step, failed_count, locked_until | 앱 계정 직접 접근 불가(SECURITY DEFINER 함수만). 임시 비밀번호는 저장하지 않음 |
+| auth_sessions | tenant_id, user_id → memberships, expires_at, revoked_at | 서버 세션. 로그아웃·비밀번호 초기화·권한 회수 시 즉시 무효 |
 | legal_entities / facilities | kind(CORPORATION/FACILITY), legal_entity_id | 소속법인과 시설 분리 |
 | donors | donor_type, display_name, external_ref, version | 동명이인 허용(UNIQUE 없음), 자동 병합 금지 |
 | donor_private | contact_ciphertext(AES-256-GCM), key_version | 키는 DB 밖. 권한자에게 마스킹 표시 |

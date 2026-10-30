@@ -36,3 +36,9 @@ export const CORRECTION_LABEL: Record<string, string> = { REVERSAL: '역거래(�
 export function newKey(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
+
+/** 직원 계정에 줄 수 있는 역할(시스템 작업 계정 제외). */
+export const ROLE_OPTIONS: [string, string][] = [
+  ['DONATION_STAFF', '후원담당'], ['GOODS_STAFF', '물품담당'], ['ACCOUNTING', '회계담당'], ['APPROVER', '승인권자'],
+  ['RECEIPT_STAFF', '영수증담당'], ['INSTITUTION_ADMIN', '기관관리자'], ['AUDITOR', '감사/개인정보책임자'],
+];

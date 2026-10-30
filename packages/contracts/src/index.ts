@@ -8,6 +8,17 @@ const qty = z.string().regex(/^\d{1,12}(\.\d{1,3})?$/, '소수 3자리 이내 �
 
 export const DevLoginRequest = z.object({ username: z.string().min(1).max(64), tenantCode: z.string().max(32).optional() });
 
+// ───────────── 실제 로그인·계정 ─────────────
+export const PasswordLoginRequest = z.object({ username: z.string().trim().min(1).max(64), password: z.string().min(1).max(256) });
+export const TotpLoginRequest = z.object({ mfaToken: z.string().min(1).max(1024), code: z.string().trim().min(6).max(8) });
+export const ChangePasswordRequest = z.object({ currentPassword: z.string().min(1).max(256), newPassword: z.string().min(1).max(256) });
+export const TotpEnableRequest = z.object({ code: z.string().trim().min(6).max(8) });
+const Username = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,31}$/, '영문 소문자·숫자·._- 3~32자');
+const RoleList = z.array(z.string().max(32)).min(1).max(8);
+export const CreateUserRequest = z.object({ username: Username, displayName: z.string().trim().min(1).max(40), roles: RoleList });
+export const ResetPasswordRequest = z.object({ resetMfa: z.boolean().default(false) });
+export const SetMembershipRequest = z.object({ roles: RoleList, revoke: z.boolean().default(false) });
+
 export const CreateDonorRequest = z.object({
   donorType: z.enum(['INDIVIDUAL', 'CORPORATION', 'GROUP', 'ANONYMOUS']),
   displayName: z.string().trim().min(1).max(100),
