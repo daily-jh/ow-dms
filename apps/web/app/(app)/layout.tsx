@@ -24,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/integrations">희망이음 준비</Link>
         <Link href="/closing">월 마감</Link>
         {me.actions.includes('audit.read') && <Link href="/audit">감사기록</Link>}
+        {me.actions.includes('settings.write') && <Link href="/settings">기준정보</Link>}
         {me.actions.includes('user.manage') && <Link href="/admin/users">직원 관리</Link>}
         <Link href="/account">내 계정</Link>
         <div className="who">

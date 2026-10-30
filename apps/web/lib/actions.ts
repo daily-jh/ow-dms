@@ -161,3 +161,24 @@ export async function reopenPeriod(form: FormData) {
   await run(`/closing?period=${period}`, () => api(`/v1/period-closures/${period}/reopen`, { method: 'POST', body: { reason: s(form, 'reason') ?? '' } }),
     `${period}을 재개방했습니다. 정리 후 다시 마감하십시오.`);
 }
+
+// ───────────── 기준정보(기관관리자) ─────────────
+export async function createMaster(form: FormData) {
+  const kind = s(form, 'kind') ?? '';
+  const body: Record<string, unknown> = { name: s(form, 'name') };
+  if (kind === 'legal-entities') body.kind = s(form, 'entityKind') ?? 'CORPORATION';
+  if (kind === 'facilities') body.legalEntityId = s(form, 'legalEntityId');
+  if (kind === 'warehouses') body.facilityId = s(form, 'facilityId');
+  if (kind === 'items') Object.assign(body, { baseUnit: s(form, 'baseUnit'), perishable: form.get('perishable') === 'on' });
+  if (kind === 'funds') Object.assign(body, { designated: form.get('designated') === 'on', purpose: s(form, 'purpose') });
+  await run('/settings', () => api(`/v1/settings/${encodeURIComponent(kind)}`, { method: 'POST', body, idempotencyKey: s(form, 'idempotencyKey') ?? undefined }), `${s(form, 'name') ?? ''} 추가했습니다.`);
+}
+
+export async function updateMaster(form: FormData) {
+  const kind = s(form, 'kind') ?? '';
+  const id = s(form, 'id') ?? '';
+  const body: Record<string, unknown> = {};
+  if (s(form, 'name')) body.name = s(form, 'name');
+  if (s(form, 'active')) body.active = s(form, 'active') === 'true';
+  await run('/settings', () => api(`/v1/settings/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`, { method: 'POST', body }), `${s(form, 'name') ?? ''} 저장했습니다.`.trim());
+}

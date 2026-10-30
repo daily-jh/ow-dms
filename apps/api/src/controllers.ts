@@ -3,14 +3,16 @@ import type { Request, Response } from 'express';
 import {
   CreateDistributionRequest, CreateDonorRequest, CreateGoodsReceiptRequest, CreateIntegrationBatchRequest, CreateMoneyReceiptRequest,
   ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
-  RequestCorrectionRequest,
+  RequestCorrectionRequest, CreateLegalEntityRequest, CreateFacilityRequest, CreateWarehouseRequest, CreateItemRequest, CreateFundRequest,
+  UpdateMasterRequest, MasterKindParam,
 } from '@owdms/contracts';
 import {
   capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
   createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, generateDocument, getGoodsReceipt, getLedger,
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
   postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
-  periodChecklist, closePeriod, reopenPeriod, listAuditEvents,
+  periodChecklist, closePeriod, reopenPeriod, listAuditEvents, listMasterData, createLegalEntity, createFacility, createWarehouse,
+  createItem, createFund, updateMaster,
 } from '@owdms/db';
 import { DomainError } from '@owdms/domain';
 import { z } from 'zod';
@@ -40,10 +42,11 @@ export class LedgerController {
   referenceData(@Req() req: Request) {
     return this.rt.tx(req, async (db) => {
       // 한 연결(트랜잭션)에서는 순차 실행한다
-      const facilities = await db.query('select id, name from facilities order by name');
-      const warehouses = await db.query('select id, facility_id as "facilityId", name from warehouses order by name');
-      const items = await db.query('select id, name, base_unit as "baseUnit", perishable from items order by name');
-      const funds = await db.query('select id, name, designated from funds order by designated, name');
+      // 새 거래 입력용: 사용 중인 기준정보만
+      const facilities = await db.query('select id, name from facilities where active order by name');
+      const warehouses = await db.query('select id, facility_id as "facilityId", name from warehouses where active order by name');
+      const items = await db.query('select id, name, base_unit as "baseUnit", perishable from items where active order by name');
+      const funds = await db.query('select id, name, designated from funds where active order by designated, name');
       return { facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows };
     });
   }
@@ -217,6 +220,54 @@ export class LedgerController {
   @Post('integration-batches/:id/submit')
   submit(@Req() req: Request, @Param('id') bid: string) {
     return this.rt.tx(req, (db, ctx) => submitBatch(db, ctx, id(bid)));
+  }
+}
+
+/** 기준정보: 기관관리자(settings.write)만 입력·변경한다. */
+@Controller('v1/settings')
+export class SettingsController {
+  constructor(@Inject(RUNTIME) private readonly rt: Runtime) {}
+
+  @Get('master')
+  master(@Req() req: Request) {
+    return this.rt.tx(req, (db, ctx) => listMasterData(db, ctx));
+  }
+
+  @Post('legal-entities')
+  legalEntity(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateLegalEntityRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createLegalEntity(db, ctx, input));
+  }
+
+  @Post('facilities')
+  facility(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateFacilityRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createFacility(db, ctx, input));
+  }
+
+  @Post('warehouses')
+  warehouse(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateWarehouseRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createWarehouse(db, ctx, input));
+  }
+
+  @Post('items')
+  item(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateItemRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createItem(db, ctx, input));
+  }
+
+  @Post('funds')
+  fund(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateFundRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createFund(db, ctx, input));
+  }
+
+  @Post(':kind/:id')
+  update(@Req() req: Request, @Param('kind') kind: string, @Param('id') mid: string, @Body() body: unknown) {
+    const k = MasterKindParam.parse(kind);
+    const input = UpdateMasterRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => updateMaster(db, ctx, k, id(mid), input));
   }
 }
 

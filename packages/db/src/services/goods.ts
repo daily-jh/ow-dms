@@ -1,6 +1,6 @@
 import { DomainError, formatQty, parsePositiveQty, parseWon } from '@owdms/domain';
 import type { ActorContext } from '../pool';
-import { assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
+import { assertActiveMaster, assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
 
 export interface GoodsLineInput {
   itemId: string;
@@ -29,6 +29,9 @@ export async function createGoodsReceiptDraft(db: Db, ctx: ActorContext, input: 
     throw new DomainError('VALIDATION_FAILED', '품목행은 1~200개입니다.', { lines: '1~200행' });
   }
   await assertPeriodOpen(db, input.receivedOn);
+  await assertActiveMaster(db, 'facilities', [input.facilityId]);
+  await assertActiveMaster(db, 'items', input.lines.map((l) => l.itemId));
+  await assertActiveMaster(db, 'warehouses', input.lines.map((l) => l.warehouseId));
   const header = await db.query<{ id: string; version: number }>(
     `insert into goods_receipts (tenant_id, facility_id, donor_id, received_on, memo, created_by)
      values (app_tenant(), $1, $2, $3, $4, $5) returning id, version`,

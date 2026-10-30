@@ -1,6 +1,6 @@
 import { DomainError, assertFundLinesMatch, parsePositiveWon } from '@owdms/domain';
 import type { ActorContext } from '../pool';
-import { assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
+import { assertActiveMaster, assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
 
 export type MoneyMethod = 'BANK_TRANSFER' | 'CASH' | 'CMS' | 'CARD' | 'OTHER';
 
@@ -23,6 +23,8 @@ export async function createMoneyReceiptDraft(
   const lines = (input.fundLines ?? []).map((l, i) => ({ fundId: l.fundId, amount: parsePositiveWon(l.amount, `fundLines[${i}].amount`) }));
   assertFundLinesMatch(amount, lines);
   await assertPeriodOpen(db, input.receivedOn);
+  await assertActiveMaster(db, 'facilities', [input.facilityId]);
+  await assertActiveMaster(db, 'funds', lines.map((l) => l.fundId));
   const r = await db.query<{ id: string; version: number }>(
     `insert into money_receipts (tenant_id, facility_id, donor_id, received_on, amount, method, memo, created_by)
      values (app_tenant(), $1, $2, $3, $4, $5, $6, $7) returning id, version`,
