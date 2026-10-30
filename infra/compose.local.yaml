@@ -1,0 +1,78 @@
+# 서버 없이 내 PC(Docker Desktop)에서 시연판 띄우기. 설정 파일 없이 바로 실행된다.
+#   docker compose -f infra/compose.local.yaml up -d --build   →  http://localhost:3000
+# 아래 비밀값은 이 PC 안에서만 쓰는 공개 예시값이다. 포트는 127.0.0.1에만 열리므로 다른 기기에서 접속할 수 없다.
+# 합성(가상) 자료 전용: 실제 기관 자료·개인정보를 넣지 않는다.
+name: owdms-local
+
+x-common-env: &common
+  NODE_ENV: production
+  DEMO_MODE: "true"
+  DATABASE_URL: postgres://owdms_app:local-only-app-password@db:5432/owdms
+  PII_ENCRYPTION_KEY: bG9jYWwtb25seS1waWkta2V5LW5vdC1hLXNlY3JldCE=
+
+services:
+  db:
+    image: postgres:16.10
+    environment:
+      POSTGRES_DB: owdms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-only-postgres-password
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d owdms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  bootstrap:
+    build: { context: .., dockerfile: Dockerfile }
+    image: owdms:local
+    environment:
+      <<: *common
+      MIGRATION_DATABASE_URL: postgres://postgres:local-only-postgres-password@db:5432/owdms
+      APP_DB_PASSWORD: local-only-app-password
+    working_dir: /app/packages/db
+    command: ["../../node_modules/.bin/tsx", "src/cli.ts", "bootstrap"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: owdms:local
+    restart: unless-stopped
+    environment:
+      <<: *common
+      SESSION_SECRET: local-only-session-secret-not-for-servers
+      DEV_LOGIN_ENABLED: "true"
+    working_dir: /app/apps/api
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  worker:
+    image: owdms:local
+    restart: unless-stopped
+    environment: *common
+    working_dir: /app/apps/worker
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  web:
+    image: owdms:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DEMO_MODE: "true"
+      API_BASE_URL: http://api:4000
+      # http://localhost로 접속하므로 Secure 쿠키를 끈다(이 PC 안에서만).
+      COOKIE_SECURE: "false"
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [api]
+
+volumes:
+  db:

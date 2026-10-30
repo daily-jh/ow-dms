@@ -1,6 +1,6 @@
 import { devLogin } from '@/lib/actions';
 import type { SearchParams } from '../components';
-import { Flash } from '../components';
+import { DEMO_MODE, DemoBanner, Flash } from '../components';
 
 const ACCOUNTS = [
   ['a.goods', '이물품', 'A기관 · 물품담당'],
@@ -15,8 +15,10 @@ const ACCOUNTS = [
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   return (
+    <>
+    <DemoBanner />
     <main style={{ maxWidth: 640, margin: '40px auto' }}>
-      <h1>OW-DMS 개발용 로그인</h1>
+      <h1>OW-DMS {DEMO_MODE ? '시연용' : '개발용'} 로그인</h1>
       <p className="lead">합성(가상) 기관·계정입니다. 실제 개인정보를 입력하지 마십시오. 운영에서는 기관 IdP(OIDC) 로그인으로 대체됩니다.</p>
       {sp.expired && <p className="msg warn">세션이 만료되었거나 권한이 회수되었습니다.</p>}
       <Flash sp={sp} />
@@ -30,5 +32,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         ))}
       </div>
     </main>
+    </>
   );
 }

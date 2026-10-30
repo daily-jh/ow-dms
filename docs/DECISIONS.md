@@ -37,3 +37,9 @@ RLS·트리거·복합 FK·부분 UNIQUE·`FOR UPDATE` 순서를 명시적으로
 
 ## D9 비용
 무료 소프트웨어 사용이 무료 운영을 뜻하지 않는다. 호스팅·백업·KMS·IdP·유지보수 견적은 V14에서 별도 산정.
+
+## D10 시연판 실행 방식
+- 공개 시연판·내 PC·Codespaces 모두 `DEMO_MODE=true`일 때만 운영 빌드에서 합성 계정 로그인을 허용하고, 전 화면에 합성자료·개인정보 입력 금지 안내를 띄운다. `DEMO_MODE` 없이 운영에서 개발 로그인을 켜면 API가 시작을 거부한다.
+- 하나의 이미지(Dockerfile)로 api·worker·web·bootstrap을 실행한다. bootstrap은 migration 후 빈 DB일 때만 합성자료를 넣고, 운영에서는 앱 DB 계정 비밀번호를 개발 기본값에서 반드시 바꾼다.
+- 관리형 DB는 `CREATE ROLE` 제약이 흔해 시연판은 PostgreSQL을 함께 띄운다. 실제 기관 운영 배포 구성은 검증 항목 확보 후 별도로 정한다.
+- Codespaces는 `next dev`가 외부 주소의 스크립트를 막으므로 빌드본(`next start`)으로 띄우고, server action 출처는 `SERVER_ACTIONS_ALLOWED_ORIGINS`로 허용한다.

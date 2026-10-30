@@ -1,0 +1,31 @@
+# GitHub Codespaces / VS Code Dev Container용 개발·시연 환경(합성자료 전용).
+services:
+  app:
+    build: { context: ., dockerfile: Dockerfile }
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    # app과 db가 같은 네트워크를 쓰므로 localhost:5432로 DB에 붙는다.
+    network_mode: service:db
+    environment:
+      MIGRATION_DATABASE_URL: postgres://postgres:postgres-dev-only@localhost:5432/owdms
+      DATABASE_URL: postgres://owdms_app:owdms_app_dev@localhost:5432/owdms
+      TEST_ADMIN_DATABASE_URL: postgres://postgres:postgres-dev-only@localhost:5432/postgres
+      TEST_APP_DATABASE_URL: postgres://owdms_app:owdms_app_dev@localhost:5432/postgres
+      SESSION_SECRET: codespace-dev-only-session-secret-0000
+      DEV_LOGIN_ENABLED: "true"
+      DEMO_MODE: "true"
+      API_BASE_URL: http://localhost:4000
+      # Codespaces 전달 주소(https://<이름>-3000.app.github.dev)에서 server action을 허용
+      SERVER_ACTIONS_ALLOWED_ORIGINS: "*.app.github.dev,localhost:3000"
+  db:
+    image: postgres:16.10
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: owdms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres-dev-only
+    volumes:
+      - db:/var/lib/postgresql/data
+volumes:
+  db:

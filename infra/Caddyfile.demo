@@ -1,0 +1,10 @@
+# 공개 시연판 HTTPS 종단. 인증서는 Caddy가 Let's Encrypt로 자동 발급한다.
+{$DEMO_DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+	reverse_proxy web:3000
+}

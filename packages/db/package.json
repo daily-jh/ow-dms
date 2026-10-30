@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "migrate": "tsx src/cli.ts migrate",
     "seed": "tsx src/cli.ts seed",
-    "reset": "tsx src/cli.ts reset"
+    "reset": "tsx src/cli.ts reset",
+    "bootstrap": "tsx src/cli.ts bootstrap"
   },
   "dependencies": {
     "@owdms/adapters": "workspace:*",
