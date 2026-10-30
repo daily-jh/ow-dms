@@ -1,0 +1,110 @@
+# 정식 운영 구성(실제 기관 자료). 시연 기능(합성 계정 로그인·합성자료)은 모두 꺼져 있다.
+# 사용법: docs/OPERATIONS.md   (비밀값은 infra/.env, 커밋 금지)
+name: owdms
+
+x-common-env: &common
+  NODE_ENV: production
+  DATABASE_URL: postgres://owdms_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD 필요}@db:5432/owdms
+  PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?PII_ENCRYPTION_KEY 필요}
+  TZ: Asia/Seoul
+
+services:
+  db:
+    image: postgres:16.10
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: owdms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 필요}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d owdms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # 포트를 열지 않는다: DB는 내부망에서만 접근
+
+  # 시작 시 1회: migration → 앱 계정 비밀번호 교체(합성자료는 넣지 않음)
+  bootstrap:
+    build: { context: .., dockerfile: Dockerfile }
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
+    environment:
+      <<: *common
+      MIGRATION_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/owdms
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    working_dir: /app/packages/db
+    command: ["../../node_modules/.bin/tsx", "src/cli.ts", "bootstrap"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
+    restart: unless-stopped
+    environment:
+      <<: *common
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET 필요(32자 이상)}
+      DEV_LOGIN_ENABLED: "false"
+      API_PORT: "4000"
+    working_dir: /app/apps/api
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  worker:
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
+    restart: unless-stopped
+    environment: *common
+    working_dir: /app/apps/worker
+    command: ["../../node_modules/.bin/tsx", "src/main.ts"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  web:
+    image: ${OWDMS_IMAGE:-ghcr.io/daily-jh/ow-dms:latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:4000
+      TZ: Asia/Seoul
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+    depends_on: [api]
+
+  # 매일 암호화 백업(gpg AES256). 파일은 서버의 BACKUP_DIR(기본 /opt/ow-dms/backups)에 쌓인다.
+  backup:
+    image: postgres:16.10
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?BACKUP_PASSPHRASE 필요}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      TZ: Asia/Seoul
+    volumes:
+      - ./backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - ${BACKUP_DIR:-../backups}:/backups
+    entrypoint: ["sh", "/usr/local/bin/backup.sh"]
+    command: ["loop"]
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      OWDMS_DOMAIN: ${OWDMS_DOMAIN:?OWDMS_DOMAIN 필요}
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web]
+
+volumes:
+  db:
+  caddy-data:
+  caddy-config:
