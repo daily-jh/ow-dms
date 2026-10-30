@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
     <DemoBanner />
     <main className="auth-page">
       <div className="auth-box" style={DEV_LOGIN ? { maxWidth: 620 } : undefined}>
-      <div className="brand-mark" aria-hidden="true">O</div>
+      <div className="brand-mark" aria-hidden="true">OW</div>
       <h1>OW-DMS</h1>
       <p className="lead">복지기관 후원금·후원품 관리</p>
       {sp.expired && <p className="msg warn">세션이 만료되었거나 권한이 회수되었습니다. 다시 로그인하십시오.</p>}
