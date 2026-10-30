@@ -2,24 +2,22 @@ import { Body, Controller, Get, Inject, Param, Post, Query, Req, Res, Header } f
 import type { Request, Response } from 'express';
 import {
   CreateDistributionRequest, CreateDonorRequest, CreateGoodsReceiptRequest, CreateIntegrationBatchRequest, CreateMoneyReceiptRequest,
-  ClosePeriodRequest, DecideApprovalRequest, DevLoginRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
+  ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
   RequestCorrectionRequest,
 } from '@owdms/contracts';
 import {
-  activeMemberships, capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
-  createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, findUser, generateDocument, getGoodsReceipt, getLedger,
+  capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
+  createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, generateDocument, getGoodsReceipt, getLedger,
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
-  postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, withTenant, requestCorrection, listCorrections,
+  postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
   periodChecklist, closePeriod, reopenPeriod, listAuditEvents,
 } from '@owdms/db';
-import { DomainError, ROLE_LABEL, ROLE_ACTIONS, type Role } from '@owdms/domain';
+import { DomainError } from '@owdms/domain';
 import { z } from 'zod';
 import { RUNTIME, Runtime } from './runtime';
-import { signSession } from './session';
-import { requestId } from './http';
 
 const Uuid = z.uuid();
-const id = (v: string) => {
+export const id = (v: string) => {
   const r = Uuid.safeParse(v);
   if (!r.success) throw new DomainError('NOT_FOUND', '대상을 찾을 수 없습니다.');
   return r.data;
@@ -27,51 +25,6 @@ const id = (v: string) => {
 
 function seoulToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
-}
-
-// 단순 로그인 시도 제한(프로세스 메모리). 운영에서는 IdP·게이트웨이의 제한을 사용한다.
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-function rateLimit(key: string, max = 20, windowMs = 60_000) {
-  const now = Date.now();
-  const e = loginAttempts.get(key);
-  if (!e || e.resetAt < now) return void loginAttempts.set(key, { count: 1, resetAt: now + windowMs });
-  e.count += 1;
-  if (e.count > max) throw new DomainError('FORBIDDEN', '잠시 후 다시 시도하십시오.');
-}
-
-@Controller('v1/auth')
-export class AuthController {
-  constructor(@Inject(RUNTIME) private readonly rt: Runtime) {}
-
-  /** 합성 계정 개발 로그인. 운영(DEV_LOGIN_ENABLED=false)에서는 404와 동일하게 거부. */
-  @Post('dev-login')
-  async devLogin(@Req() req: Request, @Body() body: unknown) {
-    if (!this.rt.config.devLoginEnabled) throw new DomainError('NOT_FOUND', '경로를 찾을 수 없습니다.');
-    rateLimit(req.ip ?? 'unknown');
-    const input = DevLoginRequest.parse(body);
-    const user = await findUser(this.rt.pool, input.username);
-    const memberships = user ? await activeMemberships(this.rt.pool, user.userId) : [];
-    const m = memberships[0];
-    if (!user || !m) throw new DomainError('FORBIDDEN', '로그인할 수 없는 계정입니다.');
-    const exp = Math.floor(Date.now() / 1000) + 8 * 3600;
-    await withTenant(this.rt.pool, { tenantId: m.tenantId, userId: user.userId }, (db) =>
-      db.query(`insert into audit_events (tenant_id, actor_user_id, category, action, result, request_id) values (app_tenant(), app_user(), 'AUTH', 'login.dev', 'SUCCESS', $1)`, [
-        requestId(req),
-      ]),
-    );
-    return { token: signSession({ sub: user.userId, tid: m.tenantId, exp }, this.rt.config.sessionSecret), expiresAt: new Date(exp * 1000).toISOString() };
-  }
-
-  @Get('me')
-  async me(@Req() req: Request) {
-    const ctx = await this.rt.actor(req);
-    const name = await this.rt.tx(req, async (db) => (await db.query<{ display_name: string }>('select display_name from users where id = app_user()')).rows[0]?.display_name);
-    return {
-      userId: ctx.userId, displayName: name, tenantId: ctx.tenantId, tenantName: ctx.tenantName, roles: ctx.roles,
-      roleLabels: ctx.roles.map((r) => ROLE_LABEL[r as Role] ?? r),
-      actions: [...new Set(ctx.roles.flatMap((r) => ROLE_ACTIONS[r as Role] ?? []))],
-    };
-  }
 }
 
 @Controller('v1')

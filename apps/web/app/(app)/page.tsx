@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { apiIfAllowed } from '@/lib/api';
 import { won } from '@/lib/format';
 
 interface Dashboard {
@@ -8,7 +8,17 @@ interface Dashboard {
 }
 
 export default async function TodayPage() {
-  const d = await api<Dashboard>('/v1/dashboard');
+  const d = await apiIfAllowed<Dashboard>('/v1/dashboard');
+  if (!d) {
+    // 기관관리자처럼 장부 열람 권한이 없는 역할(관리자라는 이유로 업무자료를 다 보지 않는다)
+    return (
+      <>
+        <h1>오늘의 업무</h1>
+        <p className="lead">이 역할에는 후원·재고 업무 현황이 표시되지 않습니다. 왼쪽 메뉴에서 맡은 일을 선택하십시오.</p>
+        <p><Link href="/admin/users">직원 관리</Link> · <Link href="/account">내 계정</Link></p>
+      </>
+    );
+  }
   const tasks = [
     { n: d.pendingApprovals, l: '승인 대기', href: '/approvals' },
     { n: d.goodsDrafts + d.moneyDrafts, l: '승인 요청 전 초안·반려', href: '/goods' },

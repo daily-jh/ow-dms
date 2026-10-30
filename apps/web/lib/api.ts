@@ -32,6 +32,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   });
   if (res.status === 401) redirect('/login?expired=1');
   const data = (await res.json()) as T | ApiErrorBody;
+  // 임시 비밀번호 변경·2단계 인증 등록 전에는 내 계정 화면으로 보낸다.
+  if (res.status === 403 && (data as ApiErrorBody).code === 'SETUP_REQUIRED') redirect('/account');
   if (!res.ok) throw new ApiError(res.status, data as ApiErrorBody);
   return data as T;
 }
@@ -42,7 +44,13 @@ export async function rawApi(path: string): Promise<Response> {
   return fetch(`${API_BASE}${path}`, { headers: { authorization: `Bearer ${token}` }, cache: 'no-store' });
 }
 
-export interface Me { userId: string; displayName: string; tenantName: string; roles: string[]; roleLabels: string[]; actions: string[] }
+export interface Me {
+  userId: string; username: string; displayName: string; tenantName: string; roles: string[]; roleLabels: string[]; actions: string[];
+  setup: { mustChangePassword: boolean; mfaSetupRequired: boolean };
+}
+
+export const MFA_COOKIE = 'owdms_mfa';
+export const DEV_LOGIN = process.env.DEV_LOGIN_ENABLED === 'true' || process.env.DEMO_MODE === 'true';
 
 export const can = (me: Me, action: string) => me.actions.includes(action);
 

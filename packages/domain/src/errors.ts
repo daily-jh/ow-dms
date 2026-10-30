@@ -17,6 +17,8 @@ export type DomainErrorCode =
   | 'NOT_FOUND'
   | 'VALUATION_UNCONFIRMED'
   | 'CLOSE_BLOCKED'
+  | 'AUTH_FAILED'
+  | 'SETUP_REQUIRED'
   | 'VALIDATION_FAILED';
 
 export class DomainError extends Error {

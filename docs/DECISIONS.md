@@ -25,6 +25,7 @@ RLS·트리거·복합 FK·부분 UNIQUE·`FOR UPDATE` 순서를 명시적으로
 
 ## D5 인증
 개발은 합성 계정 서명 토큰, 운영은 OIDC(미구현). 기관·역할은 토큰에 싣지 않고 매 요청 DB 멤버십에서 판정한다.
+→ D11로 갱신: 운영은 자체 비밀번호+OTP. OIDC는 기관 IdP가 있을 때 추가한다.
 
 ## D6 배분 = 예약 후 출고
 승인 시 `reserved`를 확보하고(가용량 감소), 출고 반영 시 원장 차감. 승인과 실출고·전달확인을 분리하라는 명세 6.3·22.2를 따른다.
@@ -43,3 +44,10 @@ RLS·트리거·복합 FK·부분 UNIQUE·`FOR UPDATE` 순서를 명시적으로
 - 하나의 이미지(Dockerfile)로 api·worker·web·bootstrap을 실행한다. bootstrap은 migration 후 빈 DB일 때만 합성자료를 넣고, 운영에서는 앱 DB 계정 비밀번호를 개발 기본값에서 반드시 바꾼다.
 - 관리형 DB는 `CREATE ROLE` 제약이 흔해 시연판은 PostgreSQL을 함께 띄운다. 실제 기관 운영 배포 구성은 검증 항목 확보 후 별도로 정한다.
 - Codespaces는 `next dev`가 외부 주소의 스크립트를 막으므로 빌드본(`next start`)으로 띄우고, server action 출처는 `SERVER_ACTIONS_ALLOWED_ORIGINS`로 허용한다.
+
+## D11 운영 인증: 자체 비밀번호 + OTP 2단계 인증
+- 소규모 복지기관은 별도 IdP(Keycloak·기관 SSO)를 운영하기 어려워, 시스템 안에 비밀번호(scrypt N=2^15)와 TOTP(RFC 6238, OTP 앱)를 둔다. 운영(`NODE_ENV=production`)에서는 2단계 인증 필수(`REQUIRE_MFA=false`로만 끔).
+- 인증정보(`user_credentials`)·세션(`auth_sessions`)은 앱 계정에 권한을 주지 않고 SECURITY DEFINER 함수로만 다룬다. 토큰은 서버 세션을 가리켜 로그아웃·비밀번호 초기화·권한 회수가 즉시 반영된다.
+- 임시 비밀번호는 저장·로그하지 않고 생성 응답에서 한 번만 보여 준다. 첫 로그인 때 비밀번호 변경과 OTP 등록을 마쳐야 업무 API가 열린다.
+- 5회 실패 시 15분 잠금, 관리자 초기화로 해제. 관리자는 자기 관리자 권한을 스스로 없앨 수 없다.
+- 직원 계정 관리는 기관관리자(`user.manage`)만, 자기 기관 안에서만(DB 함수에서도 재검사).

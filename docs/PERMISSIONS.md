@@ -18,6 +18,7 @@
 | integration.prepare / read | ●/● | /● | /● | /● | | | /● |
 | audit.read | | | | | | ● | ● |
 | settings.write | | | | | | ● | |
+| user.manage (직원 계정 생성·비밀번호 초기화·권한 변경) | | | | | | ● | |
 
 추가 규칙
 - 자기승인 금지: 요청자와 결정자가 같으면 거부(`SELF_APPROVAL_FORBIDDEN`). 소규모 기관 겸직은 `memberships.self_approval_exception`으로만 허용하며 기관 승인 기록이 필요하다(화면 미구현).

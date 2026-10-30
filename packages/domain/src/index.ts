@@ -8,3 +8,4 @@ export * from './approval';
 export * from './idempotency';
 export * from './integration';
 export * from './permissions';
+export * from './credentials';

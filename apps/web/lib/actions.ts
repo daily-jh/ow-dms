@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { API_BASE, ApiError, SESSION_COOKIE, api } from './api';
+import { secureCookie } from './cookies';
 
 function back(path: string, params: Record<string, string>): never {
   const q = new URLSearchParams(params).toString();
@@ -45,13 +46,9 @@ export async function devLogin(form: FormData) {
   redirect('/');
 }
 
-/** 운영 빌드는 Secure 쿠키. 내 PC에서 http://localhost로 띄울 때만 COOKIE_SECURE=false로 끈다. */
-function secureCookie(): boolean {
-  if (process.env.COOKIE_SECURE === 'false') return false;
-  return process.env.NODE_ENV === 'production';
-}
-
 export async function logout() {
+  // 서버 세션도 끊는다(토큰이 남아 있어도 다시 쓸 수 없게).
+  await api('/v1/auth/logout', { method: 'POST' }).catch(() => undefined);
   (await cookies()).delete(SESSION_COOKIE);
   redirect('/login');
 }
