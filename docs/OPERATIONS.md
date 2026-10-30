@@ -107,6 +107,7 @@ sudo docker compose -f compose.prod.yaml start api worker web
 |---|---|
 | 최신 버전으로 갱신 | 2단계 설치 명령을 다시 실행합니다(비밀값·자료·백업 유지). 갱신 전에 `backup.sh once`로 백업하십시오 |
 | 상태 보기 | `sudo docker compose -f /opt/ow-dms/infra/compose.prod.yaml ps` |
+| 디스크 확인 | `df -h /`, `docker system df`. 갱신에는 약 2.5GB 여유가 필요합니다. 설치 스크립트가 갱신 전후로 옛 이미지를 지우고 컨테이너 기록 파일 크기를 제한합니다. 모자라면 `docker image prune -f` 후 다시 실행하거나 스토리지를 늘리십시오 |
 | 기록 보기 | `... logs --tail 100 api` (개인정보는 기록하지 않음) |
 | 서버 보안 업데이트 | Ubuntu 자동 보안 업데이트(unattended-upgrades)는 기본으로 켜져 있습니다. 월 1회 `sudo apt upgrade` 후 재부팅을 권장합니다 |
 
