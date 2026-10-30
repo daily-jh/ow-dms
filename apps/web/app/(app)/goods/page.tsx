@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { requestApproval } from '@/lib/actions';
@@ -6,6 +7,7 @@ import { Flash, Status, type SearchParams } from '../../components';
 interface Row { id: string; receivedOn: string; status: string; version: number; donorName: string | null; lineCount: number; unconfirmedValuations: number }
 
 export default async function GoodsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/goods');
   const sp = await searchParams;
   const rows = await api<Row[]>('/v1/goods-receipts');
   return (
@@ -17,7 +19,7 @@ export default async function GoodsPage({ searchParams }: { searchParams: Search
       <p className="lead">입력은 한 번만 합니다. 승인되면 같은 원거래에서 로트·재고·인수증·연계자료가 만들어집니다.</p>
       <Flash sp={sp} />
       <table>
-        <thead><tr><th>수입일</th><th>후원처</th><th>행</th><th>가액</th><th>상태</th><th></th></tr></thead>
+        <thead><tr><th>수입일</th><th>후원처</th><th className="num">행</th><th>가액</th><th>상태</th><th></th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>

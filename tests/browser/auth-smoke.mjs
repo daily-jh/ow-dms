@@ -143,6 +143,24 @@ await page.waitForURL(`${WEB}/`);
 await shot('a4-admin-home');
 step('관리자 재로그인: 비밀번호 → OTP(틀린 코드 거부, 맞는 코드 통과)');
 
+// 기관관리자 역할만으로는 장부 화면이 열리지 않는다: 깨진 화면 대신 안내, 메뉴에도 없음 → 본인에게 역할 추가 후 열림
+if (await page.locator('nav').getByRole('link', { name: '후원품 수입' }).count()) throw new Error('권한 없는 메뉴가 보임');
+await page.goto(`${WEB}/goods`);
+await page.waitForURL(/\/no-access\?page=%2Fgoods/);
+await page.getByRole('heading', { name: '후원품 수입 화면을 열 권한이 없습니다' }).waitFor();
+await shot('a5-admin-no-access');
+await page.goto(`${WEB}/admin/users`);
+const myRow = page.locator('tr', { hasText: ADMIN });
+await myRow.locator('summary', { hasText: '관리' }).click();
+await myRow.getByLabel('물품담당').check();
+await myRow.getByRole('button', { name: '역할 저장' }).click();
+await page.waitForURL(/ok=/);
+await page.goto(`${WEB}/goods`);
+await page.getByRole('heading', { name: '후원품 수입' }).first().waitFor();
+if (!(await page.locator('nav').getByRole('link', { name: '후원품 수입' }).count())) throw new Error('역할 추가 후 메뉴가 안 보임');
+await shot('a6-admin-goods');
+step('관리자: 권한 없는 화면은 안내로 이동, 본인에게 물품담당 추가 후 후원품 화면 열림');
+
 await browser.close();
 if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
 console.log('auth browser smoke passed');

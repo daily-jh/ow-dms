@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import { api, can, type Me } from '@/lib/api';
 import { decideApproval } from '@/lib/actions';
 import { CORRECTION_LABEL, TARGET_LABEL, won } from '@/lib/format';
@@ -17,9 +18,10 @@ function Summary({ a }: { a: Approval }) {
 }
 
 export default async function ApprovalsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/approvals');
   const sp = await searchParams;
   const [me, pending, recent] = await Promise.all([
-    api<Me>('/v1/auth/me'), api<Approval[]>('/v1/approvals?status=PENDING'), api<Approval[]>('/v1/approvals'),
+    getMe(), api<Approval[]>('/v1/approvals?status=PENDING'), api<Approval[]>('/v1/approvals'),
   ]);
   const canDecide = can(me, 'approval.decide');
   return (

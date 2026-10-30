@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { api, apiIfAllowed } from '@/lib/api';
 import { createMoneyReceipt, requestApproval, requestCorrection } from '@/lib/actions';
 import { newKey, won } from '@/lib/format';
@@ -10,6 +11,7 @@ interface Donor { id: string; displayName: string }
 const METHODS = { BANK_TRANSFER: '계좌이체', CASH: '현금', CMS: 'CMS', CARD: '카드', OTHER: '기타' } as const;
 
 export default async function MoneyPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/money');
   const sp = await searchParams;
   const [rows, ref, donors] = await Promise.all([apiIfAllowed<Row[]>('/v1/money-receipts'), api<Ref>('/v1/reference-data'), apiIfAllowed<Donor[]>('/v1/donors')]);
   if (rows === null) return <><h1>후원금 수입</h1><p className="msg warn">현재 계정에는 후원금 조회 권한이 없습니다.</p></>;
@@ -30,16 +32,16 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
         </div>
         <div className="fields">
           {[0, 1].map((i) => (
-            <div key={i} className="row" style={{ alignItems: 'end' }}>
-              <div style={{ flex: 1 }}><label htmlFor={`fundId${i}`}>기금 {i + 1}</label><select id={`fundId${i}`} name={`fundId${i}`}><option value="">선택</option>{ref.funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
-              <div style={{ width: 120 }}><label htmlFor={`fundAmount${i}`}>배분액</label><input id={`fundAmount${i}`} name={`fundAmount${i}`} inputMode="numeric" /></div>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 10, alignItems: 'end', gridColumn: 'span 2' }}>
+              <div><label htmlFor={`fundId${i}`}>기금 {i + 1}</label><select id={`fundId${i}`} name={`fundId${i}`}><option value="">선택</option>{ref.funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
+              <div><label htmlFor={`fundAmount${i}`}>배분액</label><input id={`fundAmount${i}`} name={`fundAmount${i}`} inputMode="numeric" /></div>
             </div>
           ))}
         </div>
         <button type="submit">초안 저장</button>
       </form>
       <table>
-        <thead><tr><th>수납일</th><th>후원자</th><th>금액</th><th>방법</th><th>상태</th><th></th></tr></thead>
+        <thead><tr><th>수납일</th><th>후원자</th><th className="num">금액</th><th>방법</th><th>상태</th><th></th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>

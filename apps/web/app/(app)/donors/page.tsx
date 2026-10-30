@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import { api, can, type Me } from '@/lib/api';
 import { createDonor } from '@/lib/actions';
 import { newKey } from '@/lib/format';
@@ -7,9 +8,10 @@ interface Donor { id: string; donorType: string; displayName: string; maskedPhon
 const TYPES = { INDIVIDUAL: '개인', CORPORATION: '법인', GROUP: '단체', ANONYMOUS: '익명' } as const;
 
 export default async function DonorsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/donors');
   const sp = await searchParams;
   const search = typeof sp.q === 'string' ? sp.q : '';
-  const [me, donors] = await Promise.all([api<Me>('/v1/auth/me'), api<Donor[]>(`/v1/donors${search ? `?search=${encodeURIComponent(search)}` : ''}`)]);
+  const [me, donors] = await Promise.all([getMe(), api<Donor[]>(`/v1/donors${search ? `?search=${encodeURIComponent(search)}` : ''}`)]);
   const showContact = can(me, 'donor.private.read');
   return (
     <>

@@ -1,3 +1,4 @@
+import { getMe, requirePage } from '@/lib/nav';
 import { api, type Me } from '@/lib/api';
 import { setMembership } from '@/lib/auth-actions';
 import type { SearchParams } from '../../../components';
@@ -13,8 +14,9 @@ interface UserRow {
 const when = (v: string | null) => (v ? new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Seoul' }).format(new Date(v)) : '-');
 
 export default async function UsersPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/admin/users');
   const sp = await searchParams;
-  const me = await api<Me>('/v1/auth/me');
+  const me = await getMe();
   const users = await api<UserRow[]>('/v1/admin/users');
   return (
     <>
@@ -34,7 +36,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
             const locked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
             return (
               <tr key={u.userId}>
-                <td>{u.displayName}<br /><span className="muted">{u.username}</span></td>
+                <td>{u.displayName}{u.userId === me.userId && <> <span className="badge info">나</span></>}<br /><span className="muted">{u.username}</span></td>
                 <td>{u.roleLabels.join(', ')}</td>
                 <td>
                   {!u.active ? <span className="badge err">권한 회수됨</span>
@@ -55,7 +57,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
                         <input type="hidden" name="userId" value={u.userId} />
                         <div className="row" style={{ flexWrap: 'wrap' }}>
                           {ROLE_OPTIONS.map(([v, l]) => (
-                            <label key={v} className="row" style={{ color: 'var(--text)', margin: 0, width: 'auto' }}>
+                            <label key={v} className="chip">
                               <input type="checkbox" name="roles" value={v} defaultChecked={u.roles.includes(v)} style={{ width: 'auto' }} /> {l}
                             </label>
                           ))}

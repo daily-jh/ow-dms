@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Flash, Status, type SearchParams } from '../../components';
@@ -5,6 +6,7 @@ import { Flash, Status, type SearchParams } from '../../components';
 interface Doc { id: string; title: string; sourceType: string; sourceId: string; sourceVersion: number; isDraft: boolean; generatedAt: string; auto: boolean }
 
 export default async function DocumentsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/documents');
   const sp = await searchParams;
   const docs = await api<Doc[]>('/v1/documents');
   return (

@@ -1,3 +1,4 @@
+import { requirePage } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { createGoodsReceipt } from '@/lib/actions';
 import { newKey } from '@/lib/format';
@@ -7,6 +8,7 @@ interface Ref { facilities: { id: string; name: string }[]; warehouses: { id: st
 interface Donor { id: string; displayName: string; donorType: string }
 
 export default async function NewGoodsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requirePage('/goods/new');
   const sp = await searchParams;
   const [ref, donors] = await Promise.all([api<Ref>('/v1/reference-data'), api<Donor[]>('/v1/donors')]);
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
