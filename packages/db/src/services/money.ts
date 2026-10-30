@@ -1,4 +1,4 @@
-import { DomainError, assertFundLinesMatch, assertYearMonth, parsePositiveWon } from '@owdms/domain';
+import { DONATION_CHANNELS, type DonationChannel, DomainError, assertFundLinesMatch, assertYearMonth, parsePositiveWon } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { assertActiveMaster, assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
 import { assertPledgeLink } from './pledges';
@@ -9,6 +9,9 @@ export async function createMoneyReceiptDraft(
   db: Db,
   ctx: ActorContext,
   input: {
+    sourceChannel?: DonationChannel;
+    projectName?: string | null;
+    evidenceRef?: string | null;
     facilityId: string;
     donorId?: string | null;
     receivedOn: string;
@@ -22,6 +25,7 @@ export async function createMoneyReceiptDraft(
   },
 ): Promise<{ id: string; version: number }> {
   requireAction(ctx, 'money.draft');
+  if (input.sourceChannel && !Object.hasOwn(DONATION_CHANNELS, input.sourceChannel)) throw new DomainError('VALIDATION_FAILED', '모금 경로를 확인해 주세요.');
   assertDate(input.receivedOn, 'receivedOn');
   const amount = parsePositiveWon(input.amount);
   const lines = (input.fundLines ?? []).map((l, i) => ({ fundId: l.fundId, amount: parsePositiveWon(l.amount, `fundLines[${i}].amount`) }));
@@ -36,10 +40,10 @@ export async function createMoneyReceiptDraft(
     await assertPledgeLink(db, input.pledgeId, input.donorId, pledgeMonth);
   }
   const r = await db.query<{ id: string; version: number }>(
-    `insert into money_receipts (tenant_id, facility_id, donor_id, received_on, amount, method, memo, created_by, pledge_id, pledge_month)
-     values (app_tenant(), $1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, version`,
+    `insert into money_receipts (tenant_id, facility_id, donor_id, received_on, amount, method, memo, created_by, pledge_id, pledge_month, source_channel, project_name, evidence_ref)
+     values (app_tenant(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning id, version`,
     [input.facilityId, input.donorId ?? null, input.receivedOn, amount.toString(), input.method, input.memo ?? null, ctx.userId,
-      input.pledgeId || null, pledgeMonth && `${pledgeMonth}-01`],
+      input.pledgeId || null, pledgeMonth && `${pledgeMonth}-01`, input.sourceChannel ?? 'OTHER', input.projectName?.trim() || null, input.evidenceRef?.trim() || null],
   );
   const { id, version } = r.rows[0]!;
   for (const l of lines) {
@@ -54,7 +58,7 @@ export async function createMoneyReceiptDraft(
 export async function listMoneyReceipts(db: Db, ctx: ActorContext, q: { limit?: number } = {}) {
   requireAction(ctx, 'money.read');
   const r = await db.query(
-    `select m.id, m.received_on, m.amount, m.method, m.status, m.version, d.display_name as donor_name,
+    `select m.id, m.received_on, m.amount, m.method, m.status, m.version, m.source_channel, m.project_name, m.evidence_ref, m.memo, d.display_name as donor_name,
             to_char(m.pledge_month, 'YYYY-MM') as pledge_month
        from money_receipts m left join donors d on d.id = m.donor_id
       order by m.received_on desc, m.created_at desc, m.id limit $1`,
@@ -63,6 +67,7 @@ export async function listMoneyReceipts(db: Db, ctx: ActorContext, q: { limit?: 
   return r.rows.map((m) => ({
     id: m.id as string, receivedOn: m.received_on as string, amount: m.amount as string, method: m.method as string,
     status: m.status as string, version: m.version as number, donorName: (m.donor_name ?? null) as string | null,
+    sourceChannel: m.source_channel as DonationChannel, projectName: m.project_name as string | null, evidenceRef: m.evidence_ref as string | null, memo: m.memo as string | null,
     pledgeMonth: (m.pledge_month ?? null) as string | null,
   }));
 }
@@ -77,6 +82,7 @@ export async function getMoneyReceiptSnapshot(db: Db, id: string) {
     snapshot: {
       type: 'MONEY_RECEIPT', id: m.id, version: m.version, facilityId: m.facility_id, donorId: m.donor_id, receivedOn: m.received_on,
       amount: m.amount, method: m.method, memo: m.memo,
+      ...(m.source_channel !== 'OTHER' || m.project_name || m.evidence_ref ? { sourceChannel: m.source_channel, projectName: m.project_name, evidenceRef: m.evidence_ref } : {}),
       fundLines: lines.rows.map((l) => ({ fundId: l.fund_id, amount: l.amount })),
     },
   };

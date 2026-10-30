@@ -29,12 +29,12 @@ export default async function GoodsPage({ searchParams }: { searchParams: Search
               <td>{r.unconfirmedValuations > 0 ? <Status value="UNCONFIRMED" label={`미확정 ${r.unconfirmedValuations}행`} /> : <Status value="CONFIRMED" label="확정" />}</td>
               <td><Status value={r.status} /></td>
               <td>
-                {['DRAFT', 'REJECTED'].includes(r.status) && (
+                {['DRAFT', 'REJECTED', 'PENDING_APPROVAL'].includes(r.status) && (
                   <form action={requestApproval} className="inline">
                     <input type="hidden" name="targetType" value="GOODS_RECEIPT" />
                     <input type="hidden" name="targetId" value={r.id} />
                     <input type="hidden" name="returnTo" value="/goods" />
-                    <button type="submit" className="secondary">승인 요청</button>
+                    <button type="submit" className="secondary">확정하기</button>
                   </form>
                 )}
               </td>

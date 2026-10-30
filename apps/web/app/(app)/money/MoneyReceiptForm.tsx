@@ -1,5 +1,6 @@
 'use client';
 
+import { DONATION_CHANNELS } from '@/lib/donation-details';
 import { startTransition, useActionState, useState, type ChangeEvent } from 'react';
 import { saveMoneyReceipt } from '@/lib/money-actions';
 import type { MoneyFormState } from '@/lib/money-form';
@@ -19,8 +20,8 @@ export default function MoneyReceiptForm({ facilities, funds, donors, pledges, t
   const [split, setSplit] = useState(false);
   const [firstAmount, setFirstAmount] = useState('');
   // 서버 검증 오류에서도 React의 form reset으로 입력을 잃지 않도록 업무 입력값을 제어한다.
-  const [values, setValues] = useState<Record<string, string>>({ facilityId: facilities.length === 1 ? facilities[0]!.id : '', receivedOn: today, method: 'BANK_TRANSFER' });
-  const control = (field: string) => ({ value: values[field] ?? '', onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setValues((v) => ({ ...v, [field]: e.target.value })) });
+  const [values, setValues] = useState<Record<string, string>>({ facilityId: facilities.length === 1 ? facilities[0]!.id : '', receivedOn: today, method: 'BANK_TRANSFER', sourceChannel: 'DIRECT', fundId0: funds.length === 1 ? funds[0]!.id : '' });
+  const control = (field: string) => ({ value: values[field] ?? '', onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setValues((v) => ({ ...v, [field]: e.target.value })) });
   const error = (field: string) => state.fieldErrors?.[field]
     ? <p id={`${field}-error`} className="msg err" role="alert">{state.fieldErrors[field]}</p> : null;
   const attrs = (field: string) => ({ 'aria-invalid': !!state.fieldErrors?.[field], 'aria-describedby': state.fieldErrors?.[field] ? `${field}-error` : undefined });
@@ -43,6 +44,13 @@ export default function MoneyReceiptForm({ facilities, funds, donors, pledges, t
         <div><label htmlFor="amount">수납액(원) *</label><input id="amount" name="amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} required {...attrs('amount')} />{error('amount')}</div>
         <div><label htmlFor="method">수납방법</label><select id="method" name="method" {...control('method')}>{Object.entries(METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
       </div>
+      <div className="fields">
+        <div><label htmlFor="sourceChannel">모금 경로</label><select id="sourceChannel" name="sourceChannel" {...control('sourceChannel')}>{Object.entries(DONATION_CHANNELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+        <div><label htmlFor="projectName">사업·모금명</label><input id="projectName" name="projectName" maxLength={100} placeholder="예: 겨울나기 모금" {...control('projectName')} /></div>
+        <div><label htmlFor="evidenceRef">입금·증빙 관리번호</label><input id="evidenceRef" name="evidenceRef" maxLength={100} placeholder="내부 증빙번호 (계좌번호 제외)" {...control('evidenceRef')} /></div>
+        <div><label htmlFor="memo">업무 메모</label><textarea id="memo" name="memo" maxLength={500} placeholder="지정 조건·확인 사항 (민감정보 제외)" {...control('memo')} /></div>
+      </div>
+      <p className="muted">모금 경로와 기금의 사용 목적은 별개입니다. 바자회·외부지원은 후원금으로 분류가 확인된 수납만 입력하세요.</p>
       {!!pledges.length && <div className="fields">
         <div style={{ gridColumn: 'span 2' }}><label htmlFor="pledge">정기후원 약정(선택)</label><select id="pledge" name="pledge" {...control('pledge')}><option value="">연결 안 함</option>{pledges.map((p) => <option key={p.id} value={`${p.id}|${p.donorId}`}>{p.donorName} · 월 {p.amount}원 · {p.fundName}</option>)}</select></div>
         <div><label htmlFor="pledgeMonth">몇 월분</label><input id="pledgeMonth" name="pledgeMonth" type="month" {...control('pledgeMonth')} /></div>
@@ -59,7 +67,8 @@ export default function MoneyReceiptForm({ facilities, funds, donors, pledges, t
         </>}
       </div>
       {error('fundLines')}
-      <button type="submit">{pending ? '저장 중…' : '초안 저장'}</button>
+      <p className="muted">저장하면 담당자 확인으로 확정되며, 별도 결재 없이 수입 실적에 반영됩니다. 잘못 입력한 확정 건은 사유를 남겨 취소한 뒤 다시 입력하세요.</p>
+      <button type="submit">{pending ? '저장 중…' : '저장·확정'}</button>
     </fieldset>
   </form>;
 }

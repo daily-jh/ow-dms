@@ -24,7 +24,7 @@ function Result({ state }: { state: ImportState }) {
     );
   }
   return state.created > 0 ? (
-    <p className="msg ok" role="status">후원금 초안 <strong>{state.created}건</strong>을 만들었습니다. 후원금 화면에서 확인 후 승인 요청하십시오.</p>
+    <p className="msg ok" role="status">후원금 초안 <strong>{state.created}건</strong>을 만들었습니다. 후원금 화면에서 확인 후 담당자가 확정하십시오.</p>
   ) : (
     <div className="msg err" role="alert">하나도 만들지 않았습니다. 아래 행을 고쳐 파일 전체를 다시 올리십시오(일부만 들어가 중복되지 않게 막았습니다).{errors}</div>
   );
@@ -50,7 +50,7 @@ export function ImportForm({ facilities, accountLabels }: { facilities: { id: st
         ) : (
           <div>
             <label htmlFor="facilityId">시설</label>
-            <select id="facilityId" name="facilityId">{facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
+            <select id="facilityId" name="facilityId" required defaultValue={facilities.length === 1 ? facilities[0]!.id : ""}><option value="">시설 선택</option>{facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
           </div>
         )}
         <div style={{ gridColumn: 'span 2' }}>

@@ -17,6 +17,7 @@ export interface ChecklistItem { code: string; label: string; count: number; blo
  */
 export async function periodChecklist(db: Db, ctx: ActorContext, period: string) {
   requireAction(ctx, 'goods.read');
+  requireAction(ctx, 'money.read');
   assertPeriod(period);
   const r = await db.query(
     `with p as (select to_date($1 || '-01', 'YYYY-MM-DD') as s, (to_date($1 || '-01', 'YYYY-MM-DD') + interval '1 month')::date as e)
@@ -42,11 +43,11 @@ export async function periodChecklist(db: Db, ctx: ActorContext, period: string)
   const x = r.rows[0];
   const mismatches = await verifyStockLedger(db);
   const items: ChecklistItem[] = [
-    { code: 'PENDING_APPROVALS', label: '승인 대기 거래', count: Number(x.pending_approvals), blocking: true, href: '/approvals' },
+    { code: 'PENDING_APPROVALS', label: '미확정 거래', count: Number(x.pending_approvals), blocking: true, href: '/approvals' },
     { code: 'PENDING_CORRECTIONS', label: '처리 대기 정정 요청', count: Number(x.pending_corrections), blocking: true, href: '/approvals' },
-    { code: 'UNPOSTED_DISTRIBUTIONS', label: '승인됐지만 출고 미반영 배분', count: Number(x.unposted_distributions), blocking: true, href: '/distributions' },
+    { code: 'UNPOSTED_DISTRIBUTIONS', label: '확정 후 출고할 배분', count: Number(x.unposted_distributions), blocking: true, href: '/distributions' },
     { code: 'LEDGER_MISMATCH', label: '재고원장과 잔고 불일치', count: mismatches.length, blocking: true, href: '/stock' },
-    { code: 'DRAFTS', label: '승인 요청 전 초안·반려', count: Number(x.drafts), blocking: false, href: '/goods' },
+    { code: 'DRAFTS', label: '확정 전 임시저장', count: Number(x.drafts), blocking: false, href: '/goods' },
     { code: 'UNCONFIRMED_VALUATIONS', label: '가액 미확정 후원품 행', count: Number(x.unconfirmed_valuations), blocking: false, href: '/goods' },
     { code: 'UNMATCHED_DEPOSITS', label: '통장 미대조 입금', count: Number(x.unmatched_deposits), blocking: false, href: '/money/import' },
     { code: 'EXTERNAL_PENDING', label: '희망이음 등록확인·정정 대기(전체 기간)', count: Number(x.external_pending), blocking: false, href: '/integrations' },
@@ -77,7 +78,7 @@ export async function periodChecklist(db: Db, ctx: ActorContext, period: string)
 }
 
 export async function closePeriod(db: Db, ctx: ActorContext, period: string) {
-  requireAction(ctx, 'approval.decide');
+  requireAction(ctx, 'period.close');
   assertPeriod(period);
   // 같은 기간 동시 마감 요청 직렬화
   await db.query('select pg_advisory_xact_lock(hashtextextended($1, 1))', [`${ctx.tenantId}:close:${period}`]);
@@ -94,7 +95,7 @@ export async function closePeriod(db: Db, ctx: ActorContext, period: string) {
 
 /** 재개방: 승인권자·사유 필수. 재개방 후에는 다시 점검표를 통과해야 마감할 수 있다. */
 export async function reopenPeriod(db: Db, ctx: ActorContext, period: string, reason: string) {
-  requireAction(ctx, 'approval.decide');
+  requireAction(ctx, 'period.close');
   assertPeriod(period);
   if (!reason?.trim()) throw new DomainError('VALIDATION_FAILED', '재개방 사유를 입력하십시오.', { reason: '필수' });
   const r = await db.query(

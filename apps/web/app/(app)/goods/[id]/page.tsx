@@ -38,14 +38,14 @@ export default async function GoodsDetail({ params, searchParams }: { params: Pr
             ))}
           </tbody>
         </table>
-        {r.snapshotHash && <p className="muted mono">승인 스냅샷 {r.snapshotHash.slice(0, 16)}… · 승인 후에는 직접 수정할 수 없고 정정 절차를 사용합니다.</p>}
+        {r.snapshotHash && <p className="muted mono">승인 스냅샷 {r.snapshotHash.slice(0, 16)}… · 확정 후에는 직접 수정할 수 없고 정정 절차를 사용합니다.</p>}
       </div>
       <div className="row">
-        {['DRAFT', 'REJECTED'].includes(r.status) && can(me, 'approval.request') && (
+        {['DRAFT', 'REJECTED', 'PENDING_APPROVAL'].includes(r.status) && can(me, 'approval.request') && (
           <form action={requestApproval}>
             <input type="hidden" name="targetType" value="GOODS_RECEIPT" /><input type="hidden" name="targetId" value={r.id} />
             <input type="hidden" name="returnTo" value={`/goods/${r.id}`} />
-            <button type="submit">승인 요청</button>
+            <button type="submit">확정하기</button>
           </form>
         )}
         {can(me, 'document.generate') && (

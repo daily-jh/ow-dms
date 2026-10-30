@@ -15,7 +15,7 @@ export default async function NewGoodsPage({ searchParams }: { searchParams: Sea
   return (
     <>
       <h1>후원품 수입 입력</h1>
-      <p className="lead">임시저장(초안) 후 승인 요청합니다. 단가는 예시 평가로 저장되며 가액 확정과는 별개입니다.</p>
+      <p className="lead">임시저장(초안) 후 확정하기합니다. 단가는 예시 평가로 저장되며 가액 확정과는 별개입니다.</p>
       <Flash sp={sp} />
       <form action={createGoodsReceipt} className="card">
         <input type="hidden" name="idempotencyKey" value={newKey('goods')} />

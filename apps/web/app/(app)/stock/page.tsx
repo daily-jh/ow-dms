@@ -15,7 +15,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   return (
     <>
       <h1>재고·배분</h1>
-      <p className="lead">유효기한이 빠른 로트부터 보여 줍니다. 가용량 = 현재고 − 승인된 예약. 출고는 승인 후 배분 목록에서 반영합니다.</p>
+      <p className="lead">유효기한이 빠른 로트부터 보여 줍니다. 가용량 = 현재고 − 확정된 예약. 출고는 확정 후 배분 목록에서 반영합니다.</p>
       <Flash sp={sp} />
       <table>
         <thead><tr><th>품목</th><th>로트</th><th>창고</th><th>유효기한</th><th className="num">현재고</th><th className="num">예약</th><th className="num">가용</th><th>배분 초안</th></tr></thead>
@@ -29,7 +29,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                 <form action={createDistribution} className="row">
                   <input type="hidden" name="idempotencyKey" value={newKey('dist')} />
                   <input type="hidden" name="lotId" value={l.lotId} /><input type="hidden" name="warehouseId" value={l.warehouseId} />
-                  <input type="hidden" name="facilityId" value={ref.facilities[0]?.id} /><input type="hidden" name="plannedOn" value={today} />
+                  <select name="facilityId" aria-label="시설" required defaultValue={ref.facilities.length === 1 ? ref.facilities[0]!.id : ''}><option value="">시설 선택</option>{ref.facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select><input type="hidden" name="plannedOn" value={today} />
                   <input name="programName" placeholder="사업명" aria-label="사업명" required style={{ width: 130 }} />
                   <input name="recipientRef" placeholder="대상자ID(선택)" aria-label="대상자 ID" pattern="[A-Za-z0-9-]{1,40}" style={{ width: 120 }} />
                   <input name="quantity" placeholder="수량" aria-label="배분 수량" inputMode="decimal" required style={{ width: 70 }} />

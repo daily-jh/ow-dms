@@ -201,3 +201,10 @@ label.chip {
 }
 label.chip input { margin: 0; }
 label.chip:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* 수입 목록은 날짜·금액을 잘게 줄바꿈하지 않고 표 안에서만 스크롤한다. */
+.money-table-scroll { max-width: 100%; overflow-x: auto; margin-bottom: 18px; }
+.money-table-scroll:focus-visible { outline: 2px solid var(--primary, #0073e6); outline-offset: 3px; }
+.money-table-scroll .money-table { display: table; min-width: 900px; margin-bottom: 0; }
+.money-table td:nth-child(1), .money-table td:nth-child(3), .money-table td:nth-child(4), .money-table td:nth-child(6) { white-space: nowrap; }
+.money-table td:nth-child(5) { min-width: 180px; overflow-wrap: anywhere; }

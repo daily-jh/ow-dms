@@ -31,6 +31,7 @@ export function moneyFormInput(form: FormData) {
     errors,
     input: {
       facilityId, amount, fundLines,
+      sourceChannel: value(form, 'sourceChannel') || 'OTHER', projectName: value(form, 'projectName') || null, evidenceRef: value(form, 'evidenceRef') || null,
       donorId: value(form, 'donorId') || pledgeDonor || null,
       receivedOn: value(form, 'receivedOn'), method: value(form, 'method'), memo: value(form, 'memo') || null,
       pledgeId: pledgeId || null, pledgeMonth: pledgeId ? value(form, 'pledgeMonth') || null : null,

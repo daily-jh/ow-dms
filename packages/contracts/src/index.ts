@@ -45,6 +45,9 @@ export const CreateGoodsReceiptRequest = z.object({
 });
 
 export const CreateMoneyReceiptRequest = z.object({
+  sourceChannel: z.enum(['DIRECT','REGULAR','SPONSORSHIP','HAPPYBEAN','PIGGY_BANK','COLLECTION_BOX','CORPORATION','BAZAAR','EXTERNAL_GRANT','OTHER']).default('OTHER'),
+  projectName: z.string().trim().max(100).nullish(),
+  evidenceRef: z.string().trim().max(100).nullish(),
   facilityId: uuid,
   donorId: uuid.nullish(),
   receivedOn: date,

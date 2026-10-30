@@ -8,7 +8,7 @@ export interface NavGroup { label: string; items: NavItem[] }
 export const NAV: NavGroup[] = [
   { label: '업무', items: [
     { href: '/', label: '오늘의 업무', icon: 'home' },
-    { href: '/approvals', label: '승인함', icon: 'check', need: 'goods.read' },
+    { href: '/approvals', label: '확정·정정 이력', icon: 'check', need: 'goods.read' },
   ] },
   { label: '후원', items: [
     { href: '/donors', label: '후원자', icon: 'people', need: 'donor.read' },
@@ -24,7 +24,7 @@ export const NAV: NavGroup[] = [
   { label: '문서·마감', items: [
     { href: '/documents', label: '서식·문서', icon: 'doc', need: 'document.read' },
     { href: '/integrations', label: '희망이음 준비', icon: 'link', need: 'integration.read' },
-    { href: '/closing', label: '월 마감', icon: 'calendar', need: 'goods.read' },
+    { href: '/closing', label: '월 마감', icon: 'calendar', need: 'money.read' },
   ] },
   { label: '관리', items: [
     { href: '/audit', label: '감사기록', icon: 'shield', need: 'audit.read' },
@@ -39,16 +39,16 @@ const EXTRA_NEED: Record<string, string> = { '/goods/new': 'goods.draft' };
 
 /** 이 동작이 있는 역할(안내 문구용, packages/domain ROLE_ACTIONS와 같은 내용). */
 export const ROLES_WITH: Record<string, string[]> = {
-  'donor.read': ['후원담당', '물품담당', '회계담당', '승인권자', '영수증담당', '기관관리자', '감사/개인정보책임자'],
+  'donor.read': ['후원담당', '물품담당', '회계담당', '승인권자', '영수증담당', '시스템 관리자', '감사/개인정보책임자'],
   'money.read': ['후원담당', '회계담당', '승인권자', '영수증담당', '감사/개인정보책임자'],
   'goods.read': ['후원담당', '물품담당', '회계담당', '승인권자', '감사/개인정보책임자'],
   'goods.draft': ['후원담당', '물품담당'],
   'money.draft': ['후원담당'],
   'document.read': ['후원담당', '물품담당', '회계담당', '승인권자', '영수증담당', '감사/개인정보책임자'],
   'integration.read': ['후원담당', '물품담당', '회계담당', '승인권자', '감사/개인정보책임자'],
-  'audit.read': ['기관관리자', '감사/개인정보책임자'],
-  'settings.write': ['기관관리자'],
-  'user.manage': ['기관관리자'],
+  'audit.read': ['시스템 관리자', '감사/개인정보책임자'],
+  'settings.write': ['시스템 관리자'],
+  'user.manage': ['시스템 관리자'],
 };
 
 const ALL_ITEMS = NAV.flatMap((g) => g.items);

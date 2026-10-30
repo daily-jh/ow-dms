@@ -9,7 +9,7 @@ export async function saveMoneyReceipt(_state: MoneyFormState, form: FormData): 
   const { input, errors } = moneyFormInput(form);
   if (Object.keys(errors).length) return { error: '입력 내용을 확인해 주세요.', fieldErrors: errors };
   try {
-    await api('/v1/money-receipts', {
+    await api('/v1/money-receipts/record', {
       method: 'POST', body: input, idempotencyKey: String(form.get('idempotencyKey') ?? ''),
     });
   } catch (e) {
@@ -18,5 +18,5 @@ export async function saveMoneyReceipt(_state: MoneyFormState, form: FormData): 
     return { error: e.body.code === 'VALIDATION_FAILED' ? '필수 항목과 입력 형식을 확인해 주세요.' : e.body.safeMessage };
   }
   revalidatePath('/', 'layout');
-  redirect('/money?ok=' + encodeURIComponent('후원금 초안을 저장했습니다.'));
+  redirect('/money?ok=' + encodeURIComponent('후원금을 저장·확정했습니다. 실적에 반영되었습니다.'));
 }

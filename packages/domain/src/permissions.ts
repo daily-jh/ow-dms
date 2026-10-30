@@ -23,6 +23,7 @@ export type Action =
   | 'goods.draft'
   | 'goods.read'
   | 'distribution.draft'
+  | 'period.close'
   | 'approval.request'
   | 'approval.decide'
   | 'document.generate'
@@ -39,7 +40,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   ACCOUNTING: '회계담당',
   APPROVER: '승인권자',
   RECEIPT_STAFF: '영수증담당',
-  INSTITUTION_ADMIN: '기관관리자',
+  INSTITUTION_ADMIN: '시스템 관리자',
   AUDITOR: '감사/개인정보책임자',
   SYSTEM_WORKER: '시스템 작업',
 };
@@ -47,7 +48,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 export const ROLE_ACTIONS: Record<Role, readonly Action[]> = {
   DONATION_STAFF: [
     'donor.read', 'donor.write', 'donor.private.read', 'money.draft', 'money.read', 'goods.draft', 'goods.read',
-    'approval.request', 'document.generate', 'document.read', 'integration.prepare', 'integration.read',
+    'distribution.draft', 'period.close', 'approval.request', 'document.generate', 'document.read', 'integration.prepare', 'integration.read',
   ],
   // 물품담당은 후원자 세무식별정보·연락처를 보지 않는다.
   GOODS_STAFF: [
@@ -55,7 +56,7 @@ export const ROLE_ACTIONS: Record<Role, readonly Action[]> = {
     'document.read', 'integration.read',
   ],
   ACCOUNTING: ['donor.read', 'money.read', 'goods.read', 'document.read', 'integration.read'],
-  APPROVER: ['donor.read', 'money.read', 'goods.read', 'approval.decide', 'document.read', 'integration.read'],
+  APPROVER: ['period.close', 'donor.read', 'money.read', 'goods.read', 'approval.decide', 'document.read', 'integration.read'],
   RECEIPT_STAFF: ['donor.read', 'donor.tax.read', 'money.read', 'document.read'],
   // 관리자라는 이유로 개인정보 전체 열람을 허용하지 않는다.
   INSTITUTION_ADMIN: ['donor.read', 'settings.write', 'audit.read', 'user.manage'],

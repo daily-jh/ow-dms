@@ -20,11 +20,11 @@ export default async function ClosingPage({ searchParams }: { searchParams: Sear
   const current = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit' }).format(new Date());
   const period = typeof sp.period === 'string' && /^\d{4}-\d{2}$/.test(sp.period) ? sp.period : current;
   const [me, c] = await Promise.all([getMe(), api<Checklist>(`/v1/period-closures/${period}`)]);
-  const canDecide = can(me, 'approval.decide');
+  const canDecide = can(me, 'period.close');
   return (
     <>
       <h1>월 마감 <Status value={c.status} /></h1>
-      <p className="lead">점검표의 차단 항목이 0건이어야 마감할 수 있습니다. 마감된 달에는 새 거래·승인·출고·정정을 기록할 수 없고, 재개방은 승인권자가 사유를 남겨야 합니다.</p>
+      <p className="lead">점검표의 차단 항목이 0건이어야 마감할 수 있습니다. 마감된 달에는 새 거래·확정·출고·정정을 기록할 수 없고, 재개방은 후원담당자가 사유를 남겨야 합니다.</p>
       <Flash sp={sp} />
       <form className="row" style={{ marginBottom: 16 }}>
         <label htmlFor="period" style={{ margin: 0 }}>기간</label>
@@ -32,8 +32,8 @@ export default async function ClosingPage({ searchParams }: { searchParams: Sear
         <button type="submit" className="secondary">보기</button>
       </form>
       <div className="grid" style={{ marginBottom: 16 }}>
-        <div className="tile"><div className="n">{won(c.totals.moneyConfirmed)}</div><div className="l">승인된 후원금 수납</div></div>
-        <div className="tile"><div className="n">{c.totals.goodsReceipts}건</div><div className="l">승인된 후원품 수입</div></div>
+        <div className="tile"><div className="n">{won(c.totals.moneyConfirmed)}</div><div className="l">확정된 후원금 수납</div></div>
+        <div className="tile"><div className="n">{c.totals.goodsReceipts}건</div><div className="l">확정된 후원품 수입</div></div>
         <div className="tile"><div className="n">{c.totals.distributionsPosted}건</div><div className="l">출고 반영된 배분</div></div>
       </div>
       <table>
@@ -64,7 +64,7 @@ export default async function ClosingPage({ searchParams }: { searchParams: Sear
             <button type="submit" className="danger">재개방</button>
           </form>
         )
-      ) : <p className="msg warn">마감·재개방은 승인권자만 할 수 있습니다.</p>}
+      ) : <p className="msg warn">마감·재개방은 후원담당자만 할 수 있습니다.</p>}
       {c.history.length > 0 && (
         <>
           <h2 style={{ fontSize: 17 }}>마감 이력</h2>

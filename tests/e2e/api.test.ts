@@ -175,3 +175,23 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     expect(events.json.some((e: any) => e.action === 'correction.apply.reversal')).toBe(true);
   });
 });
+
+
+it('후원담당 단독 저장·확정 API는 중복저장 방지와 권한 검사를 함께 적용한다', async () => {
+  const staff = api(await login('a.donation'));
+  const goods = api(await login('a.goods'));
+  const body = { facilityId: SEED.facilityA, amount: '67890', method: 'BANK_TRANSFER', receivedOn: '2026-12-05',
+    fundLines: [{ fundId: SEED.fundGeneralA, amount: '67890' }], sourceChannel: 'HAPPYBEAN', projectName: '가상 모금', evidenceRef: 'TEST-002' };
+  const denied = await goods('POST', '/v1/money-receipts/record', body);
+  expect(denied.status).toBe(403);
+  const saved = await staff('POST', '/v1/money-receipts/record', body, { 'Idempotency-Key': 'staff-record-001' });
+  expect(saved.status).toBe(201);
+  expect(saved.json.status).toBe('APPROVED');
+  const replay = await staff('POST', '/v1/money-receipts/record', body, { 'Idempotency-Key': 'staff-record-001' });
+  expect(replay.json.id).toBe(saved.json.id);
+  const invalid = await staff('POST', '/v1/money-receipts/record', { ...body, facilityId: null, fundLines: [] });
+  expect(invalid.status).toBe(422);
+  const rows = await staff('GET', '/v1/money-receipts');
+  expect(rows.json.filter((r: any) => r.id === saved.json.id)).toHaveLength(1);
+  expect(rows.json.find((r: any) => r.id === saved.json.id)).toMatchObject({ sourceChannel: 'HAPPYBEAN', projectName: '가상 모금', evidenceRef: 'TEST-002' });
+});

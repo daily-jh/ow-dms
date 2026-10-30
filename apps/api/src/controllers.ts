@@ -8,7 +8,7 @@ import {
   ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest, ApplyYeonmuPresetRequest,
 } from '@owdms/contracts';
 import {
-  capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
+  confirmTransaction, confirmCorrection, confirmPendingCorrection, capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
   createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, generateDocument, getGoodsReceipt, getLedger,
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
   postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
@@ -91,6 +91,33 @@ export class LedgerController {
   @Get('money-receipts')
   moneyReceipts(@Req() req: Request) {
     return this.rt.tx(req, (db, ctx) => listMoneyReceipts(db, ctx));
+  }
+
+  @Post('money-receipts/record')
+  recordMoneyReceipt(@Req() req: Request, @Body() body: unknown) {
+    const input = CreateMoneyReceiptRequest.parse(body);
+    return this.rt.mutate(req, async (db, ctx) => {
+      const r = await createMoneyReceiptDraft(db, ctx, input);
+      await confirmTransaction(db, ctx, 'MONEY_RECEIPT', r.id);
+      return { ...r, status: 'APPROVED' };
+    });
+  }
+
+  @Post('transactions/confirm')
+  confirm(@Req() req: Request, @Body() body: unknown) {
+    const input = RequestApprovalRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => confirmTransaction(db, ctx, input.targetType, input.targetId));
+  }
+
+  @Post('corrections/confirm')
+  correctNow(@Req() req: Request, @Body() body: unknown) {
+    const input = RequestCorrectionRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => confirmCorrection(db, ctx, input));
+  }
+
+  @Post('corrections/pending/:id/confirm')
+  confirmPending(@Req() req: Request, @Param('id') aid: string) {
+    return this.rt.mutate(req, (db, ctx) => confirmPendingCorrection(db, ctx, id(aid)));
   }
 
   @Post('money-receipts')

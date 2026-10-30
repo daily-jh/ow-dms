@@ -25,10 +25,12 @@ const asA = <T>(fn: (db: pg.PoolClient) => Promise<T>) => withTenant(app, adminA
 describe('기준정보 관리', () => {
   let itemId = '';
   let warehouseId = '';
+  let facilityId = '';
 
   it('기관관리자가 법인·시설·창고·품목·기금을 만든다. 같은 이름은 거부한다', async () => {
     const le = await asA((db) => createLegalEntity(db, adminA, { name: '새법인(가상)', kind: 'CORPORATION' }));
     const fac = await asA((db) => createFacility(db, adminA, { name: '새복지관(가상)', legalEntityId: le.id }));
+    facilityId = fac.id;
     warehouseId = (await asA((db) => createWarehouse(db, adminA, { name: '1층 창고', facilityId: fac.id }))).id;
     itemId = (await asA((db) => createItem(db, adminA, { name: '라면 5입', baseUnit: '봉', perishable: false }))).id;
     await asA((db) => createFund(db, adminA, { name: '일반후원금(새)', designated: false }));
@@ -58,7 +60,7 @@ describe('기준정보 관리', () => {
     const draft = () =>
       withTenant(app, A.goods, (db) =>
         createGoodsReceiptDraft(db, A.goods, {
-          facilityId: SEED.facilityA, receivedOn: '2026-10-29',
+          facilityId, receivedOn: '2026-10-29',
           lines: [{ itemId, warehouseId, quantity: '3', unit: '봉' }],
         }),
       );
