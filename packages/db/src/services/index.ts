@@ -15,3 +15,4 @@ export * from './corrections';
 export * from './closing';
 export * from './settings';
 export * from './imports';
+export * from './pledges';

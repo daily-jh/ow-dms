@@ -1,6 +1,7 @@
-import { DomainError, assertFundLinesMatch, parsePositiveWon } from '@owdms/domain';
+import { DomainError, assertFundLinesMatch, assertYearMonth, parsePositiveWon } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { assertActiveMaster, assertDate, assertPeriodOpen, audit, requireAction, type Db } from './common';
+import { assertPledgeLink } from './pledges';
 
 export type MoneyMethod = 'BANK_TRANSFER' | 'CASH' | 'CMS' | 'CARD' | 'OTHER';
 
@@ -15,6 +16,9 @@ export async function createMoneyReceiptDraft(
     method: MoneyMethod;
     memo?: string | null;
     fundLines: { fundId: string; amount: string }[];
+    /** 정기후원 약정의 몇 월분인지. 월을 비우면 수납일의 달로 본다. */
+    pledgeId?: string | null;
+    pledgeMonth?: string | null;
   },
 ): Promise<{ id: string; version: number }> {
   requireAction(ctx, 'money.draft');
@@ -25,10 +29,17 @@ export async function createMoneyReceiptDraft(
   await assertPeriodOpen(db, input.receivedOn);
   await assertActiveMaster(db, 'facilities', [input.facilityId]);
   await assertActiveMaster(db, 'funds', lines.map((l) => l.fundId));
+  let pledgeMonth: string | null = null;
+  if (input.pledgeId) {
+    pledgeMonth = assertYearMonth(input.pledgeMonth || input.receivedOn.slice(0, 7), 'pledgeMonth');
+    if (!input.donorId) throw new DomainError('VALIDATION_FAILED', '약정에 연결하려면 후원자를 고르십시오.', { donorId: '필수' });
+    await assertPledgeLink(db, input.pledgeId, input.donorId, pledgeMonth);
+  }
   const r = await db.query<{ id: string; version: number }>(
-    `insert into money_receipts (tenant_id, facility_id, donor_id, received_on, amount, method, memo, created_by)
-     values (app_tenant(), $1, $2, $3, $4, $5, $6, $7) returning id, version`,
-    [input.facilityId, input.donorId ?? null, input.receivedOn, amount.toString(), input.method, input.memo ?? null, ctx.userId],
+    `insert into money_receipts (tenant_id, facility_id, donor_id, received_on, amount, method, memo, created_by, pledge_id, pledge_month)
+     values (app_tenant(), $1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, version`,
+    [input.facilityId, input.donorId ?? null, input.receivedOn, amount.toString(), input.method, input.memo ?? null, ctx.userId,
+      input.pledgeId || null, pledgeMonth && `${pledgeMonth}-01`],
   );
   const { id, version } = r.rows[0]!;
   for (const l of lines) {
@@ -43,7 +54,8 @@ export async function createMoneyReceiptDraft(
 export async function listMoneyReceipts(db: Db, ctx: ActorContext, q: { limit?: number } = {}) {
   requireAction(ctx, 'money.read');
   const r = await db.query(
-    `select m.id, m.received_on, m.amount, m.method, m.status, m.version, d.display_name as donor_name
+    `select m.id, m.received_on, m.amount, m.method, m.status, m.version, d.display_name as donor_name,
+            to_char(m.pledge_month, 'YYYY-MM') as pledge_month
        from money_receipts m left join donors d on d.id = m.donor_id
       order by m.received_on desc, m.created_at desc, m.id limit $1`,
     [Math.min(Math.max(q.limit ?? 50, 1), 200)],
@@ -51,6 +63,7 @@ export async function listMoneyReceipts(db: Db, ctx: ActorContext, q: { limit?: 
   return r.rows.map((m) => ({
     id: m.id as string, receivedOn: m.received_on as string, amount: m.amount as string, method: m.method as string,
     status: m.status as string, version: m.version as number, donorName: (m.donor_name ?? null) as string | null,
+    pledgeMonth: (m.pledge_month ?? null) as string | null,
   }));
 }
 

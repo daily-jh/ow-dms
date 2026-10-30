@@ -12,7 +12,9 @@ interface Tx {
   counterparty: string; memo: string | null; status: 'OPEN' | 'PARTIAL' | 'MATCHED' | 'EXCLUDED'; excludeReason: string | null;
   receipts: { id: string; amount: string; status: string; donorName: string | null }[];
   donorCandidates: { id: string; displayName: string }[];
+  pledgeCandidates: { id: string; donorId: string; amount: string; sameAmount: boolean }[];
 }
+interface Pledges { pledges: { id: string; donorName: string; amount: string; fundName: string }[] }
 interface Batch { id: string; kind: string; accountLabel: string | null; fileName: string; importedRows: number; duplicateRows: number; createdAt: string; createdBy: string }
 interface Donor { id: string; displayName: string }
 
@@ -26,9 +28,14 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
   await requirePage('/money/import');
   const sp = await searchParams;
   const view = (typeof sp.view === 'string' && sp.view in VIEWS ? sp.view : 'open') as keyof typeof VIEWS;
-  const [txs, ref, batches, donors] = await Promise.all([
+  const [txs, ref, batches, donors, pledges] = await Promise.all([
     api<Tx[]>(`/v1/bank-transactions?view=${view}`), api<Ref>('/v1/reference-data'), api<Batch[]>('/v1/imports'), api<Donor[]>('/v1/donors'),
+    api<Pledges>('/v1/pledges?months=1'),
   ]);
+  const pledgeLabel = (id: string) => {
+    const p = pledges.pledges.find((x) => x.id === id);
+    return p ? `${p.donorName} 월 ${won(p.amount)}` : '약정';
+  };
   const labels = [...new Set(batches.map((b) => b.accountLabel).filter((l): l is string => !!l))];
   const facilityId = ref.facilities[0]?.id ?? '';
   return (
@@ -64,6 +71,9 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
             {txs.map((t) => {
               const label = `${t.occurredOn} ${t.counterparty || '(입금자 없음)'} ${won(t.amount)}`;
               const only = t.donorCandidates.length === 1 ? t.donorCandidates[0]!.id : '';
+              // 이름이 같은 후원자 1명의 약정 중 금액까지 같은 것이 정확히 1건일 때만 미리 골라 둔다(최종 선택은 사람)
+              const same = t.pledgeCandidates.filter((p) => p.sameAmount);
+              const pledgePick = only && same.length === 1 && same[0]!.donorId === only ? same[0]!.id : '';
               return (
                 <tr key={t.id}>
                   <td>{t.occurredOn}<br /><span className="muted">{t.occurredTime?.slice(0, 5) ?? ''} {t.accountLabel}</span></td>
@@ -120,6 +130,23 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
                             <input name="amount" inputMode="numeric" defaultValue={t.remaining} aria-label={`${label} 연결 금액`} />
                           </label>
                           <button type="submit">초안 만들기</button>
+                          {pledges.pledges.length > 0 && (<label style={{ gridColumn: '1 / -1' }}>정기후원 약정(선택)
+                            <select name="pledgeId" defaultValue={pledgePick} aria-label={`${label} 약정`}>
+                              <option value="">연결 안 함</option>
+                              {t.pledgeCandidates.length > 0 && (
+                                <optgroup label="이 입금자의 약정">
+                                  {t.pledgeCandidates.map((p) => <option key={p.id} value={p.id}>{pledgeLabel(p.id)}{p.sameAmount ? ' (금액 같음)' : ''}</option>)}
+                                </optgroup>
+                              )}
+                              {pledges.pledges.some((p) => !t.pledgeCandidates.some((c) => c.id === p.id)) && (
+                                <optgroup label="다른 약정(입금자명이 다를 때)">
+                                  {pledges.pledges.filter((p) => !t.pledgeCandidates.some((c) => c.id === p.id)).map((p) => (
+                                    <option key={p.id} value={p.id}>{p.donorName} 월 {won(p.amount)} · {p.fundName}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </select>
+                          </label>)}
                         </form>
                         {t.status === 'OPEN' && (
                           <details style={{ marginTop: 6 }}>
@@ -142,7 +169,8 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
           </tbody>
         </table>
       )}
-      <p className="muted">금액을 나누면 한 입금을 여러 후원자·기금으로 연결할 수 있습니다. 이름이 같은 후원자가 여럿이면 자동으로 고르지 않습니다.</p>
+      <p className="muted">금액을 나누면 한 입금을 여러 후원자·기금으로 연결할 수 있습니다. 이름이 같은 후원자가 여럿이면 자동으로 고르지 않습니다.
+        약정을 고르고 후원자를 익명/미확인으로 두면 약정 후원자로 채우며, 입금일의 달을 약정 납입월로 기록합니다.</p>
 
       {batches.length > 0 && (
         <>

@@ -13,6 +13,7 @@ export const NAV: NavGroup[] = [
   { label: '후원', items: [
     { href: '/donors', label: '후원자', icon: 'people', need: 'donor.read' },
     { href: '/money', label: '후원금', icon: 'won', need: 'money.read' },
+    { href: '/pledges', label: '정기후원 약정', icon: 'repeat', need: 'money.read' },
     { href: '/money/import', label: '통장·엑셀 가져오기', icon: 'upload', need: 'money.draft' },
   ] },
   { label: '물품', items: [
