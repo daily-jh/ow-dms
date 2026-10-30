@@ -1,12 +1,13 @@
 // 브라우저 수직 기능 점검: 로그인 → 후원품 초안 → 승인요청 → (승인권자) 승인 → 재고 → 인수증
 // 실행: WEB_URL=http://localhost:3000 SHOTS=./shots node tests/browser/smoke.mjs  (Playwright·Chromium 필요)
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const WEB = process.env.WEB_URL ?? 'http://localhost:3000';
 const SHOTS = process.env.SHOTS;
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {});
 const page = await browser.newPage({ viewport: { width: 1366, height: 900 }, locale: 'ko-KR' });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -104,7 +105,7 @@ step('감사기록에서 정정 확인');
 await page.getByRole('button', { name: '로그아웃' }).click();
 await login('a.donation');
 await page.goto(`${WEB}/money/import`);
-const bankCsv = new URL('./fixtures/bank-synthetic.csv', import.meta.url).pathname;
+const bankCsv = fileURLToPath(new URL('./fixtures/bank-synthetic.csv', import.meta.url));
 await page.setInputFiles('#file', bankCsv);
 await page.getByRole('button', { name: '가져오기' }).click();
 await page.getByText('입금 3건을 새로 가져왔습니다').waitFor();
@@ -139,7 +140,7 @@ await page.goto(`${WEB}/money`);
 await page.locator('#pledge').selectOption({ index: 1 });
 await page.locator('#amount').fill('50000');
 await page.locator('#fundId0').selectOption({ index: 1 });
-await page.locator('#fundAmount0').fill('50000');
+if ((await page.locator('#fundAmount0').inputValue()) !== '50000') throw new Error('한 기금 전액 배분액이 자동으로 채워지지 않음');
 await page.getByRole('button', { name: '초안 저장' }).click();
 await page.getByText('후원금 초안을 저장했습니다').waitFor();
 if (!(await page.locator('table').innerText()).includes('약정 ')) throw new Error('후원금 목록에 약정 연결이 보이지 않음');

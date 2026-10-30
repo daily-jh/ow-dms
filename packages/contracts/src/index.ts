@@ -126,6 +126,11 @@ export const CreateItemRequest = z.object({ name: MasterName, baseUnit: z.string
 export const CreateFundRequest = z.object({ name: MasterName, designated: z.boolean(), purpose: z.string().trim().max(200).nullish() });
 export const UpdateMasterRequest = z.object({ name: MasterName.optional(), active: z.boolean().optional(), purpose: z.string().trim().max(200).nullish() });
 export const MasterKindParam = z.enum(['legal-entities', 'facilities', 'warehouses', 'items', 'funds']);
+export const ApplyYeonmuPresetRequest = z.object({
+  legalEntityId: uuid,
+  fundKeys: z.array(z.enum(['GENERAL', 'SPONSORSHIP'])).max(2).refine((v) => new Set(v).size === v.length, '기금 중복'),
+  reviewed: z.literal(true),
+});
 
 // ───────────── 파일 반입·통장 입금 대조 ─────────────
 const FileUpload = {

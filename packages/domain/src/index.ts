@@ -11,3 +11,4 @@ export * from './permissions';
 export * from './credentials';
 export * from './bankImport';
 export * from './pledge';
+export * from './institutionPreset';

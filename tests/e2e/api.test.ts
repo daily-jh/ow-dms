@@ -4,6 +4,7 @@ import type pg from 'pg';
 import { createApp } from '@owdms/api';
 import { SEED } from '@owdms/db';
 import { setupTestDb } from '../integration/helpers';
+import { moneyFormInput } from '../../apps/web/lib/money-form';
 
 let app: INestApplication;
 let base: string;
@@ -102,6 +103,25 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     const r = await goods('POST', '/v1/goods-receipts', { facilityId: SEED.facilityA, receivedOn: '2026/10/29', lines: [] });
     expect(r.status).toBe(422);
     expect(Object.keys(r.json.fieldErrors)).toEqual(expect.arrayContaining(['receivedOn', 'lines']));
+  });
+
+  it('후원금 화면 값으로 초안을 저장하고 필수값 누락·타 기관·권한초과는 거부한다', async () => {
+    const staff = api(await login('a.donation'));
+    const f = new FormData();
+    for (const [k, v] of Object.entries({ facilityId: SEED.facilityA, amount: '100,000', fundId0: SEED.fundGeneralA, fundAmount0: '100,000', receivedOn: '2026-10-30', method: 'BANK_TRANSFER' })) f.set(k, v);
+    const { errors, input } = moneyFormInput(f);
+    expect(errors).toEqual({});
+    const saved = await staff('POST', '/v1/money-receipts', input, { 'Idempotency-Key': 'money-form-regression-0001' });
+    expect(saved.status).toBe(201);
+    const list = await staff('GET', '/v1/money-receipts');
+    expect(list.json.find((r: any) => r.id === saved.json.id)).toMatchObject({ status: 'DRAFT', amount: '100000' });
+    expect((await staff('POST', '/v1/money-receipts', { ...input, facilityId: null, fundLines: [] })).status).toBe(422);
+    expect((await staff('POST', '/v1/money-receipts', { ...input, facilityId: SEED.facilityB })).status).toBe(404);
+    const goods = api(await login('a.goods'));
+    expect((await goods('POST', '/v1/money-receipts', input)).status).toBe(403);
+    const admin = api(await login('a.admin'));
+    expect((await admin('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: false })).status).toBe(422);
+    expect((await staff('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: true })).status).toBe(403);
   });
 
   it('T11 같은 Idempotency-Key 재전송은 같은 결과, 다른 내용은 409', async () => {

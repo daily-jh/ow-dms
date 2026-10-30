@@ -5,7 +5,7 @@ import {
   ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
   RequestCorrectionRequest, CreateLegalEntityRequest, CreateFacilityRequest, CreateWarehouseRequest, CreateItemRequest, CreateFundRequest,
   UpdateMasterRequest, MasterKindParam, ImportBankStatementRequest, ImportMoneySheetRequest, BankReceiptRequest,
-  ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest,
+  ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest, ApplyYeonmuPresetRequest,
 } from '@owdms/contracts';
 import {
   capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
@@ -13,7 +13,7 @@ import {
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
   postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
   periodChecklist, closePeriod, reopenPeriod, listAuditEvents, listMasterData, createLegalEntity, createFacility, createWarehouse,
-  createItem, createFund, updateMaster, importBankStatement, importMoneySheet, listBankTransactions, listImportBatches,
+  createItem, createFund, updateMaster, applyYeonmuPreset, importBankStatement, importMoneySheet, listBankTransactions, listImportBatches,
   createReceiptFromBank, excludeBankTransaction, reopenBankTransaction, type BankTxView,
   createPledge, endPledge, listPledges, type PledgeView,
 } from '@owdms/db';
@@ -53,6 +53,12 @@ export class LedgerController {
       const funds = await db.query('select id, name, designated from funds where active order by designated, name');
       return { facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows };
     });
+  }
+
+  @Post('settings/presets/yeonmu')
+  applyYeonmu(@Req() req: Request, @Body() body: unknown) {
+    const input = ApplyYeonmuPresetRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => applyYeonmuPreset(db, ctx, input));
   }
 
   @Get('donors')

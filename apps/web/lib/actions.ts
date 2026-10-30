@@ -112,20 +112,6 @@ export async function generateDocument(form: FormData) {
   redirect(`/documents/${docId}`);
 }
 
-export async function createMoneyReceipt(form: FormData) {
-  const fundLines = [0, 1].map((i) => ({ fundId: s(form, `fundId${i}`), amount: s(form, `fundAmount${i}`)?.replaceAll(',', '') ?? null })).filter((l) => l.fundId && l.amount);
-  // 약정 선택값은 '약정id|후원자id'. 후원자를 비워 두면 약정 후원자로 채운다(다르게 고르면 API가 거부).
-  const [pledgeId, pledgeDonor] = (s(form, 'pledge') ?? '').split('|');
-  await run('/money', () => api('/v1/money-receipts', {
-    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
-    body: {
-      facilityId: s(form, 'facilityId'), donorId: s(form, 'donorId') ?? (pledgeDonor || null), receivedOn: s(form, 'receivedOn'),
-      amount: s(form, 'amount')?.replaceAll(',', ''), method: s(form, 'method'), memo: s(form, 'memo'), fundLines,
-      pledgeId: pledgeId || null, pledgeMonth: pledgeId ? s(form, 'pledgeMonth') : null,
-    },
-  }), '후원금 초안을 저장했습니다.');
-}
-
 export async function createDonor(form: FormData) {
   await run('/donors', () => api('/v1/donors', {
     method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
@@ -166,6 +152,13 @@ export async function reopenPeriod(form: FormData) {
 }
 
 // ───────────── 기준정보(기관관리자) ─────────────
+export async function applyYeonmuSettings(form: FormData) {
+  await run('/settings', () => api('/v1/settings/presets/yeonmu', {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+    body: { legalEntityId: s(form, 'legalEntityId'), fundKeys: form.getAll('fundKeys'), reviewed: form.get('reviewed') === 'on' },
+  }), '연무 기본 항목을 확인·추가했습니다. 기존 설정과 거래는 변경하지 않았습니다.');
+}
+
 export async function createMaster(form: FormData) {
   const kind = s(form, 'kind') ?? '';
   const body: Record<string, unknown> = { name: s(form, 'name') };

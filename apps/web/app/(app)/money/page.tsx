@@ -1,7 +1,8 @@
 import { requirePage } from '@/lib/nav';
 import Link from 'next/link';
 import { api, apiIfAllowed, can } from '@/lib/api';
-import { createMoneyReceipt, requestApproval, requestCorrection } from '@/lib/actions';
+import { requestApproval, requestCorrection } from '@/lib/actions';
+import MoneyReceiptForm from './MoneyReceiptForm';
 import { newKey, won } from '@/lib/format';
 import { CorrectionForm, Flash, Status, type SearchParams } from '../../components';
 
@@ -31,53 +32,34 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
         {can(me, 'money.draft') && <Link className="btn secondary" href="/money/import">통장·엑셀 가져오기</Link>}
       </div>
       <Flash sp={sp} />
-      <form action={createMoneyReceipt} className="card">
-        <input type="hidden" name="idempotencyKey" value={newKey('money')} />
-        <input type="hidden" name="facilityId" value={ref.facilities[0]?.id} />
-        <div className="fields">
-          <div><label htmlFor="donorId">후원자</label><select id="donorId" name="donorId"><option value="">익명/미확인</option>{(donors ?? []).map((d) => <option key={d.id} value={d.id}>{d.displayName}</option>)}</select></div>
-          <div><label htmlFor="receivedOn">수납일</label><input id="receivedOn" name="receivedOn" type="date" defaultValue={today} required /></div>
-          <div><label htmlFor="amount">수납액(원)</label><input id="amount" name="amount" inputMode="numeric" required /></div>
-          <div><label htmlFor="method">수납방법</label><select id="method" name="method">{Object.entries(METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
-        </div>
-        {!!pledges?.pledges.length && (
-          <div className="fields">
-            <div style={{ gridColumn: 'span 2' }}>
-              <label htmlFor="pledge">정기후원 약정(선택)</label>
-              <select id="pledge" name="pledge">
-                <option value="">연결 안 함</option>
-                {pledges.pledges.map((p) => <option key={p.id} value={`${p.id}|${p.donorId}`}>{p.donorName} · 월 {won(p.amount)} · {p.fundName}</option>)}
-              </select>
-            </div>
-            <div><label htmlFor="pledgeMonth">몇 월분</label><input id="pledgeMonth" name="pledgeMonth" type="month" placeholder="YYYY-MM" /></div>
-            <p className="muted" style={{ alignSelf: 'end', margin: 0 }}>비우면 수납일의 달. 후원자를 비우면 약정 후원자로 채웁니다.</p>
-          </div>
-        )}
-        <div className="fields">
-          {[0, 1].map((i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 10, alignItems: 'end', gridColumn: 'span 2' }}>
-              <div><label htmlFor={`fundId${i}`}>기금 {i + 1}</label><select id={`fundId${i}`} name={`fundId${i}`}><option value="">선택</option>{ref.funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
-              <div><label htmlFor={`fundAmount${i}`}>배분액</label><input id={`fundAmount${i}`} name={`fundAmount${i}`} inputMode="numeric" /></div>
-            </div>
-          ))}
-        </div>
-        <button type="submit">초안 저장</button>
-      </form>
+      {can(me, 'money.draft') && (ref.facilities.length && ref.funds.length ? (
+        <MoneyReceiptForm key={newKey('money-form')} facilities={ref.facilities} funds={ref.funds} donors={donors ?? []}
+          pledges={pledges?.pledges ?? []} today={today} idempotencyKey={newKey('money')} />
+      ) : (
+        <section className="card" aria-label="후원금 입력 준비">
+          <h2>입력 전에 기준정보를 등록해 주세요</h2>
+          <p className="msg warn">{!ref.facilities.length && '사용 중인 시설이 없습니다. '}{!ref.funds.length && '사용 중인 기금이 없습니다. '}
+            기관관리자가 기준정보에서 법인·시설과 기금을 등록해야 후원금을 저장할 수 있습니다.</p>
+          {can(me, 'settings.write') ? <Link className="btn" href="/settings">기준정보 설정하기</Link>
+            : <p className="muted">기관관리자에게 시설과 기금 등록을 요청해 주세요.</p>}
+        </section>
+      ))}
       <table>
         <thead><tr><th>수납일</th><th>후원자</th><th className="num">금액</th><th>방법</th><th>상태</th><th></th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{r.receivedOn}</td><td>{r.donorName ?? '익명/미확인'}{r.pledgeMonth && <><br /><span className="muted">약정 {r.pledgeMonth}분</span></>}</td><td className="num">{won(r.amount)}</td><td>{METHODS[r.method as keyof typeof METHODS] ?? r.method}</td><td><Status value={r.status} /></td>
-              <td>{['DRAFT', 'REJECTED'].includes(r.status) && (
+              <td>{can(me, 'approval.request') && ['DRAFT', 'REJECTED'].includes(r.status) && (
                 <form action={requestApproval} className="inline">
                   <input type="hidden" name="targetType" value="MONEY_RECEIPT" /><input type="hidden" name="targetId" value={r.id} /><input type="hidden" name="returnTo" value="/money" />
                   <button type="submit" className="secondary">승인 요청</button>
                 </form>
               )}
-              {r.status === 'APPROVED' && <CorrectionForm action={requestCorrection} targetType="MONEY_RECEIPT" targetId={r.id} returnTo="/money" label="수납 취소·환불 요청" />}</td>
+              {can(me, 'money.draft') && r.status === 'APPROVED' && <CorrectionForm action={requestCorrection} targetType="MONEY_RECEIPT" targetId={r.id} returnTo="/money" label="수납 취소·환불 요청" />}</td>
             </tr>
           ))}
+          {!rows.length && <tr><td colSpan={6} className="muted">등록된 후원금 수입이 없습니다.</td></tr>}
         </tbody>
       </table>
     </>
