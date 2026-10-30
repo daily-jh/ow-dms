@@ -1,5 +1,5 @@
 import { DomainError, snapshotHash, transitionExternalRow, type ExternalRowState } from '@owdms/domain';
-import { assertSubmitSupported, buildGoodsReceiptReviewXlsx, hopeEumCapabilities } from '@owdms/adapters';
+import { assertSubmitSupported, buildGoodsReceiptReviewXlsx, hopeEumCapabilities, hopeEumGuide } from '@owdms/adapters';
 import type { ActorContext } from '../pool';
 import { audit, requireAction, type Db } from './common';
 import { getGoodsReceipt } from './goods';
@@ -7,6 +7,12 @@ import { getGoodsReceipt } from './goods';
 export function capabilities(ctx: ActorContext) {
   requireAction(ctx, 'integration.read');
   return hopeEumCapabilities();
+}
+
+/** 희망이음 Excel 근거 정리(9개 작성항목·코드·업무별 확인 수준). 고정 안내 자료이며 기관 자료를 담지 않는다. */
+export function hopeEumGuideFor(ctx: ActorContext) {
+  requireAction(ctx, 'integration.read');
+  return hopeEumGuide();
 }
 
 /** 승인된 후원품 수입으로 내부 검토 배치를 준비한다(PREPARED). 전송·등록 상태는 바꾸지 않는다. */
@@ -58,7 +64,7 @@ export async function exportGoodsReceiptBatch(db: Db, ctx: ActorContext, batchId
     for (const l of g.lines) {
       out.push({
         receiptId: g.id, receivedOn: g.receivedOn, donorName: g.donorName, lineNo: l.lineNo, itemName: l.itemName, quantity: l.quantity,
-        unit: l.unit, expiresOn: l.expiresOn, valuationStatus: l.valuationStatus, totalValue: l.totalValue, lotCode: l.lotCode, state: 'EXPORTED',
+        unit: l.unit, expiresOn: l.expiresOn, valuationStatus: l.valuationStatus, unitValue: l.unitValue, totalValue: l.totalValue, lotCode: l.lotCode, state: 'EXPORTED',
       });
     }
     if (r.state === 'PREPARED') {

@@ -276,6 +276,14 @@ describe('T13·T14 희망이음 reference 연계', () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(file.buffer as unknown as ArrayBuffer);
     expect(String(wb.getWorksheet('내부검토')!.getCell('A1').value)).toContain('내부 검토용·희망이음 호환 미검증');
+    // 사례집 9개 작성항목 대조표: 품명·수량은 확정 입고 행에서, 코드 항목은 비워 두고 확인 필요로 표시
+    const fields = wb.getWorksheet('9항목대조')!;
+    expect(String(fields.getCell('A1').value)).toContain('희망이음 원본 양식이 아닙니다');
+    const firstRow = fields.getRow(5);
+    expect(firstRow.getCell(1).value ?? '').toBe('');
+    expect(firstRow.getCell(6).value).toBe('100');
+    expect(String(firstRow.getCell(12).value)).toContain('후원품 유형 코드 미선택');
+    expect(wb.getWorksheet('코드참고')!.getRow(4).getCell(2).value).toBe('01');
     const states = await withTenant(app, A.donation, (db) => db.query(`select source_id, state from integration_rows where batch_id = $1`, [batchId]));
     const byId = Object.fromEntries(states.rows.map((r) => [r.source_id, r.state]));
     expect(byId[scenario.rice100Receipt!]).toBe('EXPORTED'); // 다운로드 사실만

@@ -143,6 +143,12 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     const staff = api(await login('a.donation'));
     const caps = await staff('GET', '/v1/integrations/capabilities');
     expect(caps.json.filter((c: any) => c.enabled).map((c: any) => c.mode)).toEqual(['reference']);
+    const guide = await staff('GET', '/v1/integrations/hope-eum-guide');
+    expect(guide.status).toBe(200);
+    expect(guide.json.goodsReceiptFields).toHaveLength(9);
+    expect(guide.json.goodsTypeCodes[0].code).toBe('01');
+    const admin = api(await login('a.admin')); // 기관관리자는 연계 열람 권한이 없다
+    expect((await admin('GET', '/v1/integrations/hope-eum-guide')).status).toBe(403);
     const batch = await staff('POST', '/v1/integration-batches', { operation: 'goodsReceipt', sourceIds: [scenario.rice100Receipt] }, { 'Idempotency-Key': 'e2e-batch-0001' });
     const sub = await staff('POST', `/v1/integration-batches/${batch.json.batchId}/submit`);
     expect(sub.status).toBe(422);
