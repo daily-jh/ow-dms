@@ -6,6 +6,11 @@ RUN npm install -g pnpm@10.28.0
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @owdms/web build
+# 실행에 필요 없는 것 지우기(작은 서버 디스크 절약): 빌드 캐시, 다른 libc(musl)용 바이너리, 시험 도구.
+# tsx(실행기)·esbuild·typescript·next swc(glibc)는 실행에 쓰이므로 남긴다.
+RUN rm -rf apps/web/.next/cache \
+ && find node_modules/.pnpm -maxdepth 1 \( -name '*musl*' -o -name 'vitest@*' -o -name '@vitest+*' -o -name 'vite@*' \
+      -o -name 'rolldown@*' -o -name '@rolldown+*' -o -name 'playwright*' \) -exec rm -rf {} +
 
 FROM node:24-slim
 LABEL org.opencontainers.image.source=https://github.com/daily-jh/ow-dms

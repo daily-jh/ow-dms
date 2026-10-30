@@ -74,9 +74,16 @@ echo "[4/5] 이미지 받기·실행"
 docker image prune -f > /dev/null || true
 docker builder prune -af > /dev/null 2>&1 || true
 avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
-if [ "$avail_mb" -lt 2500 ]; then
-  echo "경고: 남은 디스크가 ${avail_mb}MB입니다. 새 이미지를 받으려면 약 2.5GB가 필요합니다." >&2
-  echo "      'docker system df'로 사용량을 보고, 업체 콘솔에서 스토리지를 늘리는 것을 검토하십시오." >&2
+if [ "$avail_mb" -lt 2500 ] && [ -f "$APP_DIR/infra/.env" ]; then
+  # 새 이미지를 받을 자리가 없으면 잠깐 서비스를 내리고 옛 프로그램 이미지를 지운 뒤 받는다(몇 분 접속 불가, 자료·백업은 그대로).
+  echo "남은 디스크가 ${avail_mb}MB라 잠시 서비스를 내리고 옛 이미지를 지운 뒤 받습니다."
+  $COMPOSE down
+  old_image=$(sed -n 's/^OWDMS_IMAGE=//p' "$APP_DIR/infra/.env")
+  docker rmi "${old_image:-ghcr.io/daily-jh/ow-dms:latest}" > /dev/null 2>&1 || true
+  avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
+  if [ "$avail_mb" -lt 2000 ]; then
+    echo "경고: 그래도 남은 디스크가 ${avail_mb}MB입니다. 'docker system df'와 'df -h /'로 사용량을 확인하고, 업체 콘솔에서 스토리지를 늘리는 것을 검토하십시오." >&2
+  fi
 fi
 # GitHub에서 미리 만든 이미지를 받는다. 받을 수 없으면(비공개·네트워크 문제) 이 서버에서 직접 빌드한다.
 if $COMPOSE pull --quiet; then
