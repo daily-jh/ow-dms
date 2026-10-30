@@ -68,3 +68,42 @@ jobs:
       - name: stop
         if: always()
         run: docker compose -f infra/compose.demo.yaml down -v
+
+  prod-backup:
+    # 운영 구성: 시연 기능이 꺼져 있는지, 매일 백업·복원 점검 스크립트가 실제로 도는지 확인한다.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build image
+        run: docker build -t owdms:prod .
+      - name: start prod stack with throwaway secrets
+        run: |
+          {
+            echo OWDMS_DOMAIN=localhost
+            echo POSTGRES_PASSWORD=$(openssl rand -hex 24)
+            echo APP_DB_PASSWORD=$(openssl rand -hex 24)
+            echo SESSION_SECRET=$(openssl rand -base64 32)
+            echo PII_ENCRYPTION_KEY=$(openssl rand -base64 32)
+            echo BACKUP_PASSPHRASE=$(openssl rand -hex 24)
+            echo BACKUP_DIR=$RUNNER_TEMP/backups
+          } > infra/.env
+          mkdir -p $RUNNER_TEMP/backups
+          docker compose -f infra/compose.prod.yaml up -d --no-build db bootstrap api worker web backup
+      - name: check dev login disabled, backup and restore check
+        run: |
+          C="docker compose -f infra/compose.prod.yaml"
+          check() { $C exec -T web node -e "fetch('$1',{method:'POST',headers:{'content-type':'application/json'},body:'{\"username\":\"x\"}'}).then(r=>process.exit(r.status===$2?0:1)).catch(()=>process.exit(1))"; }
+          ok=0
+          for i in $(seq 1 60); do
+            check http://api:4000/v1/auth/dev-login 404 && ok=1 && break
+            sleep 2
+          done
+          test "$ok" = 1
+          $C run --rm --no-deps bootstrap ../../node_modules/.bin/tsx src/cli.ts create-admin ci1 "CI(가상)" ci.admin "CI관리자" > /dev/null
+          $C exec -T backup sh /usr/local/bin/backup.sh once
+          f=$(ls $RUNNER_TEMP/backups | grep '.dump.gpg$' | tail -1)
+          $C exec -T backup sh /usr/local/bin/backup.sh verify /backups/$f | tee verify.txt
+          grep -q "복원 점검 완료" verify.txt
+      - name: stop
+        if: always()
+        run: docker compose -f infra/compose.prod.yaml down -v

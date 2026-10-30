@@ -16,6 +16,7 @@
 ## 써 보기
 - **서버 없이**: GitHub Codespaces(브라우저만) 또는 내 PC의 Docker Desktop으로 실행 → [`docs/RUN_WITHOUT_SERVER.md`](docs/RUN_WITHOUT_SERVER.md)
   - 내 PC: `docker compose -f infra/compose.local.yaml up -d --build` 후 http://localhost:3000
+- **정식 운영(실제 기관 자료)**: 국내 클라우드 서버 1대 + 설치 명령 1줄, 매일 암호화 백업 → [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
 - **공개 시연판(서버 1대)**: 오라클 무료 서버 [`docs/DEPLOY_ORACLE.md`](docs/DEPLOY_ORACLE.md), 일반 서버 [`docs/DEPLOY_DEMO.md`](docs/DEPLOY_DEMO.md). 합성자료 전용이며 실제 기관 운영 배포가 아닙니다.
 
 ## 빠른 시작(개발자)
