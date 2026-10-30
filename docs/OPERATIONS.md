@@ -43,7 +43,8 @@ sudo docker compose -f /opt/ow-dms/infra/compose.prod.yaml run --rm bootstrap \
 화면에 임시 비밀번호가 한 번 표시됩니다.
 1. `https://<주소>`에서 임시 비밀번호로 로그인합니다.
 2. 비밀번호를 바꾸고 OTP 앱을 등록합니다.
-3. **직원 관리**에서 두 번째 관리자와 직원 계정을 만듭니다.
+3. **기준정보**에서 법인·시설·창고·품목·기금을 입력합니다.
+4. **직원 관리**에서 두 번째 관리자와 직원 계정을 만듭니다.
 
 같은 명령으로 다른 기관을 추가할 수 있습니다. 기관끼리는 서로 자료가 보이지 않습니다.
 
@@ -113,6 +114,5 @@ sudo docker compose -f compose.prod.yaml start api worker web
 
 ## 7. 아직 없는 것
 
-- 기준정보(시설·창고·품목·기금) 관리 화면은 다음 단계에서 추가합니다.
 - 은행·CMS 파일 반입·대조, 기부금영수증 발급, 희망이음 실제 연계도 아직 없습니다(`docs/IMPLEMENTATION_PLAN.md`, `docs/VALIDATION_REGISTER.md`).
 - 서버 장애 알림(모니터링)은 클라우드 업체의 기본 모니터링·알림을 켜서 대신합니다.
