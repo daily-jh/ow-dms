@@ -13,6 +13,7 @@ export const NAV: NavGroup[] = [
   { label: '후원', items: [
     { href: '/donors', label: '후원자', icon: 'people', need: 'donor.read' },
     { href: '/money', label: '후원금', icon: 'won', need: 'money.read' },
+    { href: '/money/import', label: '통장·엑셀 가져오기', icon: 'upload', need: 'money.draft' },
   ] },
   { label: '물품', items: [
     { href: '/goods', label: '후원품 수입', icon: 'box', need: 'goods.read' },
@@ -41,6 +42,7 @@ export const ROLES_WITH: Record<string, string[]> = {
   'money.read': ['후원담당', '회계담당', '승인권자', '영수증담당', '감사/개인정보책임자'],
   'goods.read': ['후원담당', '물품담당', '회계담당', '승인권자', '감사/개인정보책임자'],
   'goods.draft': ['후원담당', '물품담당'],
+  'money.draft': ['후원담당'],
   'document.read': ['후원담당', '물품담당', '회계담당', '승인권자', '영수증담당', '감사/개인정보책임자'],
   'integration.read': ['후원담당', '물품담당', '회계담당', '승인권자', '감사/개인정보책임자'],
   'audit.read': ['기관관리자', '감사/개인정보책임자'],

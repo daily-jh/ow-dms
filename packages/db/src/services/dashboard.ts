@@ -14,6 +14,8 @@ export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: st
        (select count(*) from stock_balances b join lots lt on lt.id = b.lot_id
          where b.on_hand > 0 and lt.expires_on is not null and lt.expires_on <= $1::date + 30)::int as expiring_lots,
        (select count(*) from distributions where status = 'APPROVED')::int as distributions_to_post,
+       (select count(*) from bank_transactions t where t.status = 'OPEN'
+         and t.amount > coalesce((select sum(a.amount) from bank_allocations a where a.bank_transaction_id = t.id), 0))::int as unmatched_deposits,
        (select count(*) from integration_rows where state in ('EXPORTED', 'SUBMITTED', 'ACKNOWLEDGED', 'UNKNOWN'))::int as external_pending,
        (select coalesce(sum(amount), 0) from money_receipts where status = 'APPROVED'
          and date_trunc('month', received_on) = date_trunc('month', $1::date)) as month_confirmed_income,
@@ -31,6 +33,7 @@ export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: st
     expiringLots: x.expiring_lots as number,
     distributionsToPost: x.distributions_to_post as number,
     externalPending: x.external_pending as number,
+    unmatchedDeposits: x.unmatched_deposits as number,
     // 집계 기준: 승인된 수납, 실제 수납일(received_on) 기준
     monthConfirmedIncome: x.month_confirmed_income as string,
     monthGoodsReceipts: x.month_goods_receipts as number,

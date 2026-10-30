@@ -4,7 +4,8 @@ import {
   CreateDistributionRequest, CreateDonorRequest, CreateGoodsReceiptRequest, CreateIntegrationBatchRequest, CreateMoneyReceiptRequest,
   ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
   RequestCorrectionRequest, CreateLegalEntityRequest, CreateFacilityRequest, CreateWarehouseRequest, CreateItemRequest, CreateFundRequest,
-  UpdateMasterRequest, MasterKindParam,
+  UpdateMasterRequest, MasterKindParam, ImportBankStatementRequest, ImportMoneySheetRequest, BankReceiptRequest,
+  ExcludeBankTransactionRequest,
 } from '@owdms/contracts';
 import {
   capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
@@ -12,11 +13,13 @@ import {
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
   postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
   periodChecklist, closePeriod, reopenPeriod, listAuditEvents, listMasterData, createLegalEntity, createFacility, createWarehouse,
-  createItem, createFund, updateMaster,
+  createItem, createFund, updateMaster, importBankStatement, importMoneySheet, listBankTransactions, listImportBatches,
+  createReceiptFromBank, excludeBankTransaction, reopenBankTransaction, type BankTxView,
 } from '@owdms/db';
 import { DomainError } from '@owdms/domain';
 import { z } from 'zod';
 import { RUNTIME, Runtime } from './runtime';
+import { readGrid } from './spreadsheet';
 
 const Uuid = z.uuid();
 export const id = (v: string) => {
@@ -87,6 +90,54 @@ export class LedgerController {
   createMoneyReceipt(@Req() req: Request, @Body() body: unknown) {
     const input = CreateMoneyReceiptRequest.parse(body);
     return this.rt.mutate(req, (db, ctx) => createMoneyReceiptDraft(db, ctx, input));
+  }
+
+  /** 통장 거래내역 반입: 입금은 후보로만 쌓인다(수입 아님). 원본 파일은 저장하지 않는다. */
+  @Post('imports/bank-statement')
+  async importBank(@Req() req: Request, @Body() body: unknown) {
+    await this.rt.actor(req); // 로그인 확인을 파일 해석보다 먼저 한다
+    const input = ImportBankStatementRequest.parse(body);
+    const content = Buffer.from(input.contentBase64, 'base64');
+    const grid = await readGrid(input.fileName, content);
+    return this.rt.mutate(req, (db, ctx) => importBankStatement(db, ctx, { fileName: input.fileName, content, grid, accountLabel: input.accountLabel }));
+  }
+
+  /** 후원금 입력 양식 반입: 모든 행이 맞을 때만 초안을 한꺼번에 만든다. */
+  @Post('imports/money-sheet')
+  async importSheet(@Req() req: Request, @Body() body: unknown) {
+    await this.rt.actor(req);
+    const input = ImportMoneySheetRequest.parse(body);
+    const content = Buffer.from(input.contentBase64, 'base64');
+    const grid = await readGrid(input.fileName, content);
+    return this.rt.mutate(req, (db, ctx) => importMoneySheet(db, ctx, { fileName: input.fileName, content, grid, facilityId: input.facilityId }));
+  }
+
+  @Get('imports')
+  imports(@Req() req: Request) {
+    return this.rt.tx(req, (db, ctx) => listImportBatches(db, ctx));
+  }
+
+  @Get('bank-transactions')
+  bankTransactions(@Req() req: Request, @Query('view') view?: string) {
+    const v: BankTxView = view === 'excluded' || view === 'all' ? view : 'open';
+    return this.rt.tx(req, (db, ctx) => listBankTransactions(db, ctx, { view: v }));
+  }
+
+  @Post('bank-transactions/:id/receipt')
+  bankReceipt(@Req() req: Request, @Param('id') tid: string, @Body() body: unknown) {
+    const input = BankReceiptRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createReceiptFromBank(db, ctx, this.rt.cipher, id(tid), input));
+  }
+
+  @Post('bank-transactions/:id/exclude')
+  bankExclude(@Req() req: Request, @Param('id') tid: string, @Body() body: unknown) {
+    const input = ExcludeBankTransactionRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => excludeBankTransaction(db, ctx, id(tid), input.reason));
+  }
+
+  @Post('bank-transactions/:id/reopen')
+  bankReopen(@Req() req: Request, @Param('id') tid: string) {
+    return this.rt.mutate(req, (db, ctx) => reopenBankTransaction(db, ctx, id(tid)));
   }
 
   @Get('distributions')

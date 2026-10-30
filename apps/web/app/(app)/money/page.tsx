@@ -1,5 +1,6 @@
 import { requirePage } from '@/lib/nav';
-import { api, apiIfAllowed } from '@/lib/api';
+import Link from 'next/link';
+import { api, apiIfAllowed, can } from '@/lib/api';
 import { createMoneyReceipt, requestApproval, requestCorrection } from '@/lib/actions';
 import { newKey, won } from '@/lib/format';
 import { CorrectionForm, Flash, Status, type SearchParams } from '../../components';
@@ -11,15 +12,20 @@ interface Donor { id: string; displayName: string }
 const METHODS = { BANK_TRANSFER: '계좌이체', CASH: '현금', CMS: 'CMS', CARD: '카드', OTHER: '기타' } as const;
 
 export default async function MoneyPage({ searchParams }: { searchParams: SearchParams }) {
-  await requirePage('/money');
+  const me = await requirePage('/money');
   const sp = await searchParams;
   const [rows, ref, donors] = await Promise.all([apiIfAllowed<Row[]>('/v1/money-receipts'), api<Ref>('/v1/reference-data'), apiIfAllowed<Donor[]>('/v1/donors')]);
   if (rows === null) return <><h1>후원금 수입</h1><p className="msg warn">현재 계정에는 후원금 조회 권한이 없습니다.</p></>;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
   return (
     <>
-      <h1>후원금 수입</h1>
-      <p className="lead">약정은 수입이 아닙니다. 실제 수납 근거가 있는 건만 입력하고, 기금배분 합계는 수납액과 같아야 합니다.</p>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1>후원금 수입</h1>
+          <p className="lead">약정은 수입이 아닙니다. 실제 수납 근거가 있는 건만 입력하고, 기금배분 합계는 수납액과 같아야 합니다.</p>
+        </div>
+        {can(me, 'money.draft') && <Link className="btn secondary" href="/money/import">통장·엑셀 가져오기</Link>}
+      </div>
       <Flash sp={sp} />
       <form action={createMoneyReceipt} className="card">
         <input type="hidden" name="idempotencyKey" value={newKey('money')} />

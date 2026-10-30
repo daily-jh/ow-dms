@@ -19,6 +19,7 @@ export type DomainErrorCode =
   | 'CLOSE_BLOCKED'
   | 'AUTH_FAILED'
   | 'SETUP_REQUIRED'
+  | 'DUPLICATE_IMPORT'
   | 'VALIDATION_FAILED';
 
 export class DomainError extends Error {

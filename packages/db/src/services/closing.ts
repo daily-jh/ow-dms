@@ -31,6 +31,8 @@ export async function periodChecklist(db: Db, ctx: ActorContext, period: string)
      + (select count(*) from distributions d, p where d.status in ('DRAFT', 'REJECTED') and d.planned_on >= p.s and d.planned_on < p.e) as drafts,
        (select count(*) from goods_receipt_lines l join goods_receipts g on g.id = l.receipt_id, p
          where g.status = 'APPROVED' and l.valuation_status <> 'CONFIRMED' and g.received_on >= p.s and g.received_on < p.e) as unconfirmed_valuations,
+       (select count(*) from bank_transactions t, p where t.status = 'OPEN' and t.occurred_on >= p.s and t.occurred_on < p.e
+         and t.amount > coalesce((select sum(a.amount) from bank_allocations a where a.bank_transaction_id = t.id), 0)) as unmatched_deposits,
        (select count(*) from integration_rows r where r.state in ('EXPORTED', 'SUBMITTED', 'ACKNOWLEDGED', 'UNKNOWN', 'CORRECTION_REQUIRED')) as external_pending,
        (select coalesce(sum(amount), 0) from money_receipts m, p where m.status = 'APPROVED' and m.received_on >= p.s and m.received_on < p.e) as money_confirmed,
        (select count(*) from goods_receipts g, p where g.status = 'APPROVED' and g.received_on >= p.s and g.received_on < p.e) as goods_receipts,
@@ -46,6 +48,7 @@ export async function periodChecklist(db: Db, ctx: ActorContext, period: string)
     { code: 'LEDGER_MISMATCH', label: '재고원장과 잔고 불일치', count: mismatches.length, blocking: true, href: '/stock' },
     { code: 'DRAFTS', label: '승인 요청 전 초안·반려', count: Number(x.drafts), blocking: false, href: '/goods' },
     { code: 'UNCONFIRMED_VALUATIONS', label: '가액 미확정 후원품 행', count: Number(x.unconfirmed_valuations), blocking: false, href: '/goods' },
+    { code: 'UNMATCHED_DEPOSITS', label: '통장 미대조 입금', count: Number(x.unmatched_deposits), blocking: false, href: '/money/import' },
     { code: 'EXTERNAL_PENDING', label: '희망이음 등록확인·정정 대기(전체 기간)', count: Number(x.external_pending), blocking: false, href: '/integrations' },
   ];
   const closure = await db.query(

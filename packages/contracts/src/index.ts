@@ -123,3 +123,21 @@ export const CreateItemRequest = z.object({ name: MasterName, baseUnit: z.string
 export const CreateFundRequest = z.object({ name: MasterName, designated: z.boolean(), purpose: z.string().trim().max(200).nullish() });
 export const UpdateMasterRequest = z.object({ name: MasterName.optional(), active: z.boolean().optional(), purpose: z.string().trim().max(200).nullish() });
 export const MasterKindParam = z.enum(['legal-entities', 'facilities', 'warehouses', 'items', 'funds']);
+
+// ───────────── 파일 반입·통장 입금 대조 ─────────────
+const FileUpload = {
+  fileName: z.string().trim().min(1).max(200),
+  // 5MB 파일의 base64(약 6.7MB)까지
+  contentBase64: z.string().min(1).max(7_000_000).regex(/^[A-Za-z0-9+/=\r\n]+$/, 'base64'),
+};
+export const ImportBankStatementRequest = z.object({ ...FileUpload, accountLabel: z.string().trim().min(1).max(40) });
+export const ImportMoneySheetRequest = z.object({ ...FileUpload, facilityId: uuid });
+export const BankReceiptRequest = z.object({
+  facilityId: uuid,
+  fundId: uuid,
+  amount: won.nullish(),
+  donorId: uuid.nullish(),
+  newDonor: z.object({ donorType: z.enum(['INDIVIDUAL', 'CORPORATION', 'GROUP']), displayName: z.string().trim().max(100).nullish() }).nullish(),
+  memo: z.string().max(500).nullish(),
+});
+export const ExcludeBankTransactionRequest = z.object({ reason: z.string().trim().min(1).max(200) });

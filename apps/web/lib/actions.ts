@@ -182,3 +182,33 @@ export async function updateMaster(form: FormData) {
   if (s(form, 'active')) body.active = s(form, 'active') === 'true';
   await run('/settings', () => api(`/v1/settings/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`, { method: 'POST', body }), `${s(form, 'name') ?? ''} 저장했습니다.`.trim());
 }
+
+/* ── 통장 입금 대조 ── */
+export async function bankToReceipt(form: FormData) {
+  const txId = s(form, 'txId') ?? '';
+  const donor = s(form, 'donor'); // 후원자 id, 'new:INDIVIDUAL' 등, 비우면 익명/미확인
+  const view = s(form, 'view') ?? 'open';
+  const isNew = donor?.startsWith('new:');
+  await run(`/money/import?view=${view}`, () => api(`/v1/bank-transactions/${encodeURIComponent(txId)}/receipt`, {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+    body: {
+      facilityId: s(form, 'facilityId'), fundId: s(form, 'fundId'), amount: s(form, 'amount')?.replaceAll(',', '') ?? null,
+      donorId: isNew ? null : donor, newDonor: isNew ? { donorType: donor!.slice(4) } : null,
+    },
+  }), `${s(form, 'label') ?? '입금'}: 후원금 초안을 만들었습니다. 후원금 화면에서 승인 요청하십시오.`);
+}
+
+export async function bankExclude(form: FormData) {
+  const txId = s(form, 'txId') ?? '';
+  const reason = [s(form, 'reasonKind'), s(form, 'reasonText')].filter(Boolean).join(' - ');
+  await run('/money/import', () => api(`/v1/bank-transactions/${encodeURIComponent(txId)}/exclude`, {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined, body: { reason },
+  }), `${s(form, 'label') ?? '입금'}: 후원금 아님으로 표시했습니다.`);
+}
+
+export async function bankReopen(form: FormData) {
+  const txId = s(form, 'txId') ?? '';
+  await run('/money/import?view=excluded', () => api(`/v1/bank-transactions/${encodeURIComponent(txId)}/reopen`, {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+  }), `${s(form, 'label') ?? '입금'}: 표시를 해제해 미대조 목록으로 되돌렸습니다.`);
+}

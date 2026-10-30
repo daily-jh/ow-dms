@@ -1,3 +1,4 @@
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import 'reflect-metadata';
 import { Module, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -18,7 +19,9 @@ export async function createApp(config: ApiConfig = loadConfig()): Promise<{ app
   })
   class AppModule {}
 
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'], bodyParser: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: ['error', 'warn'], bodyParser: true });
+  // 파일 반입(base64, 최대 5MB 원본)을 위해 JSON 본문 한도를 늘린다.
+  app.useBodyParser('json', { limit: '8mb' });
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('X-Request-Id', requestId(req));
     res.setHeader('X-Content-Type-Options', 'nosniff');
