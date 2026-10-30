@@ -12,10 +12,10 @@
 | legal_entities / facilities | kind(CORPORATION/FACILITY), legal_entity_id | 소속법인과 시설 분리 |
 | donors | donor_type, display_name, external_ref, version | 동명이인 허용(UNIQUE 없음), 자동 병합 금지 |
 | donor_private | contact_ciphertext(AES-256-GCM), key_version | 키는 DB 밖. 권한자에게 마스킹 표시 |
-| funds | designated, purpose | 지정/비지정 |
+| funds | designated, purpose, active | 지정/비지정. 지정은 목적 필수. 이름 기관 내 유일 |
 | money_receipts | received_on, amount>0, method, status, version, snapshot_hash | 약정과 분리. 승인 후 불변 |
 | receipt_fund_lines | fund_id, amount>0 | 합계=수납액(서비스 검증) |
-| items / warehouses | base_unit, perishable / facility_id | |
+| items / warehouses | base_unit, perishable, active / facility_id, active | 이름 기관 내 유일(창고는 시설 내). 사용 중지(active=false)는 새 거래에 못 씀, 과거 기록 유지 |
 | goods_receipts | donor_id, received_on, status, version, snapshot_hash | 승인 후 불변 |
 | goods_receipt_lines | quantity, unit, unit_conversion(jsonb 스냅샷), expires_on, valuation_status, unit_value, total_value, valuation_basis | 가액 미확정(NULL)과 0원 구분 |
 | lots | receipt_line_id(1:1), lot_code, unit, expires_on | 승인 시 생성 |

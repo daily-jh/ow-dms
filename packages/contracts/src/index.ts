@@ -113,3 +113,13 @@ const period = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'YYYY-MM');
 export const ClosePeriodRequest = z.object({ period });
 export const ReopenPeriodRequest = z.object({ reason: z.string().trim().min(1).max(500) });
 export const PeriodParam = period;
+
+// ───────────── 기준정보 ─────────────
+const MasterName = z.string().trim().min(1).max(80);
+export const CreateLegalEntityRequest = z.object({ name: MasterName, kind: z.enum(['CORPORATION', 'FACILITY']) });
+export const CreateFacilityRequest = z.object({ name: MasterName, legalEntityId: z.uuid() });
+export const CreateWarehouseRequest = z.object({ name: MasterName, facilityId: z.uuid() });
+export const CreateItemRequest = z.object({ name: MasterName, baseUnit: z.string().trim().min(1).max(10), perishable: z.boolean().default(false) });
+export const CreateFundRequest = z.object({ name: MasterName, designated: z.boolean(), purpose: z.string().trim().max(200).nullish() });
+export const UpdateMasterRequest = z.object({ name: MasterName.optional(), active: z.boolean().optional(), purpose: z.string().trim().max(200).nullish() });
+export const MasterKindParam = z.enum(['legal-entities', 'facilities', 'warehouses', 'items', 'funds']);

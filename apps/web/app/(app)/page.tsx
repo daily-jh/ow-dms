@@ -15,7 +15,7 @@ export default async function TodayPage() {
       <>
         <h1>오늘의 업무</h1>
         <p className="lead">이 역할에는 후원·재고 업무 현황이 표시되지 않습니다. 왼쪽 메뉴에서 맡은 일을 선택하십시오.</p>
-        <p><Link href="/admin/users">직원 관리</Link> · <Link href="/account">내 계정</Link></p>
+        <p><Link href="/settings">기준정보</Link> · <Link href="/admin/users">직원 관리</Link> · <Link href="/account">내 계정</Link></p>
       </>
     );
   }

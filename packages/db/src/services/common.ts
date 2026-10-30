@@ -64,3 +64,13 @@ export function assertDate(value: string, field: string): void {
     throw new DomainError('VALIDATION_FAILED', '날짜 형식은 YYYY-MM-DD입니다.', { [field]: 'YYYY-MM-DD' });
   }
 }
+
+/** 새 거래에는 사용 중지된 기준정보(시설·창고·품목·기금)를 쓸 수 없다. 없는 id는 FK가 따로 막는다. */
+export async function assertActiveMaster(db: Db, table: 'facilities' | 'warehouses' | 'items' | 'funds', ids: (string | null | undefined)[]): Promise<void> {
+  const list = [...new Set(ids.filter((v): v is string => !!v))];
+  if (!list.length) return;
+  const r = await db.query<{ name: string }>(`select name from ${table} where id = any($1::uuid[]) and not active`, [list]);
+  if (r.rowCount) {
+    throw new DomainError('VALIDATION_FAILED', `사용 중지된 기준정보입니다: ${r.rows.map((x) => x.name).join(', ')}`);
+  }
+}

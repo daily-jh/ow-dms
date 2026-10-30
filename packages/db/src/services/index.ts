@@ -13,3 +13,4 @@ export * from './idempotency';
 export * from './auth';
 export * from './corrections';
 export * from './closing';
+export * from './settings';
