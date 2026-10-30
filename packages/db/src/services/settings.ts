@@ -1,39 +1,6 @@
-import { DomainError, YEONMU_PRESET, type PresetFundKey } from '@owdms/domain';
+import { DomainError } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { audit, requireAction, type Db } from './common';
-
-/** 관리자 확인 후 후보만 추가한다. 기존 설정·귀속·지정조건은 덮어쓰거나 재활성화하지 않는다. */
-export async function applyYeonmuPreset(db: Db, ctx: ActorContext, input: { legalEntityId: string; fundKeys: PresetFundKey[]; reviewed: boolean }) {
-  requireAction(ctx, 'settings.write');
-  if (!input.reviewed) throw new DomainError('VALIDATION_FAILED', '소속과 기금 목적을 검토한 뒤 적용해 주세요.');
-  if (new Set(input.fundKeys).size !== input.fundKeys.length || input.fundKeys.some((k) => !YEONMU_PRESET.funds.some((f) => f.key === k))) {
-    throw new DomainError('VALIDATION_FAILED', '적용할 기금을 확인해 주세요.');
-  }
-  // 같은 기관에서 두 관리자가 함께 적용해도 중복 생성하지 않는다.
-  await db.query(`select pg_advisory_xact_lock(hashtextextended(app_tenant()::text || ':yeonmu-preset', 0))`);
-  const legal = await db.query('select id from legal_entities where id = $1 and active for share', [input.legalEntityId]);
-  if (!legal.rowCount) throw new DomainError('VALIDATION_FAILED', '이 기관에서 사용 중인 소속 법인·시설을 선택해 주세요.');
-  const facility = await db.query<{ id: string; legal_entity_id: string; active: boolean }>('select id, legal_entity_id, active from facilities where name = $1 for update', [YEONMU_PRESET.name]);
-  if (facility.rows.some((f) => !f.active || f.legal_entity_id !== input.legalEntityId)) {
-    throw new DomainError('VALIDATION_FAILED', '같은 이름의 시설이 다른 소속이거나 사용 중지 상태입니다. 기준정보에서 먼저 확인해 주세요.');
-  }
-  let facilityId = facility.rows[0]?.id;
-  let created = 0;
-  if (!facilityId) {
-    facilityId = (await createFacility(db, ctx, { name: YEONMU_PRESET.name, legalEntityId: input.legalEntityId })).id;
-    created++;
-  }
-  for (const key of input.fundKeys) {
-    const f = YEONMU_PRESET.funds.find((x) => x.key === key)!;
-    const existing = await db.query<{ designated: boolean; purpose: string | null; active: boolean }>('select designated, purpose, active from funds where name = $1 for update', [f.name]);
-    if (existing.rows.some((r) => !r.active || r.designated !== f.designated || r.purpose !== f.purpose)) {
-      throw new DomainError('VALIDATION_FAILED', `${f.name}의 기존 지정조건 또는 사용 상태가 다릅니다. 기존 설정을 확인해 주세요.`);
-    }
-    if (!existing.rowCount) { await createFund(db, ctx, f); created++; }
-  }
-  await audit(db, ctx, { category: 'ADMIN', action: 'master.preset.apply', resourceType: 'institution_preset', resourceId: facilityId, reason: `YEONMU_2026:${YEONMU_PRESET.version}` });
-  return { facilityId, created };
-}
 
 /** 기준정보 종류. 화면·API·감사기록이 같은 이름을 쓴다. */
 export type MasterKind = 'legal-entities' | 'facilities' | 'warehouses' | 'items' | 'funds';
@@ -62,7 +29,7 @@ export async function listMasterData(db: Db, ctx: ActorContext) {
             exists (select 1 from receipt_fund_lines r where r.fund_id = f.id) as "inUse"
      from funds f order by f.active desc, f.designated, f.name`,
   );
-  return { legalEntities: legalEntities.rows, facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows, preset: YEONMU_PRESET };
+  return { legalEntities: legalEntities.rows, facilities: facilities.rows, warehouses: warehouses.rows, items: items.rows, funds: funds.rows };
 }
 
 const name = (v: string) => {

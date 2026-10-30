@@ -28,6 +28,7 @@ export const NAV: NavGroup[] = [
   ] },
   { label: '관리', items: [
     { href: '/audit', label: '감사기록', icon: 'shield', need: 'audit.read' },
+    { href: '/setup', label: '기관 설정', icon: 'flag', need: 'settings.write' },
     { href: '/settings', label: '기준정보', icon: 'sliders', need: 'settings.write' },
     { href: '/admin/users', label: '직원 관리', icon: 'key', need: 'user.manage' },
     { href: '/account', label: '내 계정', icon: 'user' },

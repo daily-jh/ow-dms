@@ -129,11 +129,19 @@ export const CreateItemRequest = z.object({ name: MasterName, baseUnit: z.string
 export const CreateFundRequest = z.object({ name: MasterName, designated: z.boolean(), purpose: z.string().trim().max(200).nullish() });
 export const UpdateMasterRequest = z.object({ name: MasterName.optional(), active: z.boolean().optional(), purpose: z.string().trim().max(200).nullish() });
 export const MasterKindParam = z.enum(['legal-entities', 'facilities', 'warehouses', 'items', 'funds']);
+const PresetCodes = z.array(z.string().regex(/^[A-Z0-9][A-Z0-9_-]{1,39}$/)).max(40).refine((v) => new Set(v).size === v.length, '코드 중복').default([]);
 export const ApplyYeonmuPresetRequest = z.object({
-  legalEntityId: uuid,
+  legalEntityId: uuid.nullish(),
+  // 관리자가 직접 확인해 입력한 실제 운영 법인·시설
+  newLegalEntity: z.object({ name: MasterName, kind: z.enum(['CORPORATION', 'FACILITY']) }).nullish(),
   fundKeys: z.array(z.enum(['GENERAL', 'SPONSORSHIP'])).max(2).refine((v) => new Set(v).size === v.length, '기금 중복'),
+  managementTypeCodes: PresetCodes,
+  programCodes: PresetCodes,
+  partnerCodes: PresetCodes,
+  scheduleCodes: PresetCodes,
   reviewed: z.literal(true),
-});
+}).refine((v) => !!v.legalEntityId !== !!v.newLegalEntity, '소속 법인·시설은 고르거나 새로 입력(둘 중 하나)');
+export const UpdateCatalogItemRequest = z.object({ name: MasterName.optional(), detail: z.string().trim().max(300).nullish(), active: z.boolean().optional() });
 
 // ───────────── 파일 반입·통장 입금 대조 ─────────────
 const FileUpload = {

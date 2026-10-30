@@ -1,5 +1,5 @@
-// 합성자료 전용 신규 기관: 빈 기준정보 → 연무 후보 검토 → 전액/분할 저장·오류 입력 보존.
-// 실행 전 migration·seed·시험 API/web 실행. TEST_SETUP_DATABASE_URL은 loopback의 *_browser DB만 허용.
+// 합성자료 전용 신규 기관(코드 yeonmu): 빈 기준정보 → 기관 설정에서 미리 채운 연무 후보 검토·한 번에 적용 → 전액/분할 저장·오류 입력 보존.
+// 실행 전 새로 초기화한 DB에 migration·seed·시험 API/web 실행(코드 yeonmu 기관이 이미 있으면 중단). TEST_SETUP_DATABASE_URL은 loopback의 *_browser DB만 허용.
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -14,7 +14,8 @@ const db = new pg.Client({ connectionString: setupUrl.toString() });
 await db.connect();
 await db.query('begin');
 try {
-  await db.query('insert into tenants (id, code, name) values ($1, $2, $3)', [tenant, username, '설정검수 가상기관']);
+  if ((await db.query("select 1 from tenants where code = 'yeonmu'")).rowCount) throw new Error('시험 DB에 yeonmu 기관이 이미 있습니다. DB를 새로 초기화한 뒤 실행해 주세요.');
+  await db.query('insert into tenants (id, code, name) values ($1, $2, $3)', [tenant, 'yeonmu', '설정검수 가상기관']);
   await db.query('insert into users (id, username, display_name) values ($1, $2, $3)', [user, username, '설정검수 가상담당자']);
   await db.query('insert into memberships (tenant_id, user_id, roles) values ($1, $2, $3)', [tenant, user, ['INSTITUTION_ADMIN', 'DONATION_STAFF']]);
   await db.query('commit');
@@ -38,15 +39,20 @@ try {
   await page.getByText('입력 전에 기준정보를 등록해 주세요').waitFor();
   if (await page.getByRole('button', { name: '저장·확정' }).count()) throw new Error('빈 기관에서 저장폼이 열림');
   await shot('money-empty-setup');
-  await page.getByRole('link', { name: '기준정보 설정하기' }).click();
-  await page.getByPlaceholder('법인 이름', { exact: true }).fill('설정검수 가상운영주체');
-  await page.getByRole('button', { name: '법인 추가', exact: true }).click();
-  await page.getByText('설정검수 가상운영주체 추가했습니다.').waitFor();
-  await page.selectOption('#presetLegalEntity', { label: '설정검수 가상운영주체' });
-  await page.locator('input[name="fundKeys"][value="SPONSORSHIP"]').check();
+  await page.getByRole('link', { name: '기관 설정하기' }).click();
+  await page.getByText('업무 준비 상태').waitFor();
+  // 연무 후보는 미리 선택돼 있다(관리유형·사업 등). 법인 이름은 관리자가 직접 입력한다.
+  if (!(await page.locator('input[name="programs"][value="YM-SP-GENERAL"]').isChecked())) throw new Error('사업 후보 미리 선택 누락');
+  if (await page.locator('input[name="programs"][value="YM-LEGAL-CORPORATE"]').isChecked()) throw new Error('귀속 미확인 사업이 미리 선택됨');
+  if (await page.locator('input[name="partners"][value="YM-C01"]').isChecked()) throw new Error('참여 미확인 어린이집이 미리 선택됨');
+  await page.selectOption('#presetLegalEntity', 'new');
+  await page.getByLabel('새 법인·시설 명칭').fill('설정검수 가상운영주체');
+  if (!(await page.locator('input[name="fundKeys"][value="SPONSORSHIP"]').isChecked())) await page.locator('input[name="fundKeys"][value="SPONSORSHIP"]').check();
   await page.locator('input[name="reviewed"]').check();
-  await page.getByRole('button', { name: '선택한 기본 항목 추가' }).click();
+  await shot('yeonmu-setup');
+  await page.getByRole('button', { name: '선택한 기본 항목 한 번에 추가' }).click();
   await page.getByText('연무 기본 항목을 확인·추가했습니다.').waitFor();
+  if ((await page.locator('input[name="programs"]:not([disabled])').count()) !== 1) throw new Error('적용 후 상태 표시 오류');
   await shot('yeonmu-settings');
   await page.goto(`${WEB}/money`);
   if (!(await page.locator('#facilityId').inputValue())) throw new Error('시설 선택값 누락');
@@ -101,5 +107,5 @@ try {
   await page.goto(`${WEB}/money`);
   if (await page.getByRole('button', { name: '저장·확정' }).count()) throw new Error('조회 역할에 입력폼 노출');
   if (errors.length) throw new Error(errors.join('; '));
-  console.log('money setup smoke passed: empty setup, reviewed preset, full/split save, preserved values, direct confirmation, dashboard totals, direct correction, read-only role');
+  console.log('money setup smoke passed: empty setup, prefilled yeonmu setup applied once, full/split save, preserved values, direct confirmation, dashboard totals, direct correction, read-only role');
 } finally { await browser.close(); }

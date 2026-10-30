@@ -21,6 +21,8 @@
 | user.manage (직원 계정 생성·비밀번호 초기화·권한 변경) | | | | | | ● | |
 
 추가 규칙
+- 업무 흐름(2026-10-30 기관 결정): 별도 승인권자 없이 후원담당·물품담당이 저장·확정하고, 정정도 사유를 남겨 담당자가 확정한다. 아래 approval.* 동작과 승인권자 역할은 예전 자료·API 호환용으로 남아 있다.
+- 기관 설정(`/setup`): 준비 상태 조회는 settings.write·money.read·goods.read 중 하나, 연무 기본 항목 미리보기·적용과 업무 분류 변경은 settings.write. 연무 후보는 기관 코드 `yeonmu`에만 보이며 다른 기관은 NOT_FOUND.
 - 자기승인 금지: 요청자와 결정자가 같으면 거부(`SELF_APPROVAL_FORBIDDEN`). 소규모 기관 겸직은 `memberships.self_approval_exception`으로만 허용하며 기관 승인 기록이 필요하다(화면 미구현).
 - 기관관리자는 개인정보 전체 열람 권한이 없다.
 - 정정 요청: `approval.request`와 해당 업무의 초안 권한(후원품=goods.draft, 후원금=money.draft, 배분=distribution.draft)이 모두 필요. 정정 승인은 `approval.decide`, 자기승인 금지 동일.

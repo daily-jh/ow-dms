@@ -23,12 +23,13 @@ describe('메뉴 권한 표', () => {
     expect(needFor('/money')).toBe('money.read');
     expect(needFor('/pledges')).toBe('money.read');
     expect(needFor('/admin/users')).toBe('user.manage');
+    expect(needFor('/setup')).toBe('settings.write');
     expect(needFor('/')).toBeUndefined();
     expect(needFor('/account')).toBeUndefined();
   });
 
   it('기관관리자에게는 업무 장부 메뉴가 보이지 않는다', () => {
     const hrefs = visibleNav(ROLE_ACTIONS.INSTITUTION_ADMIN).flatMap((g) => g.items.map((i) => i.href));
-    expect(hrefs).toEqual(['/', '/donors', '/audit', '/settings', '/admin/users', '/account']);
+    expect(hrefs).toEqual(['/', '/donors', '/audit', '/setup', '/settings', '/admin/users', '/account']);
   });
 });
