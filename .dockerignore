@@ -6,4 +6,5 @@
 .env.*
 !.env.example
 !.env.demo.example
+backups
 sources
