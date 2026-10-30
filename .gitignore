@@ -16,3 +16,6 @@ coverage/
 /real-data/
 *.tsbuildinfo
 /backups/
+
+# Next.js가 빌드 때 만드는 안내 파일
+apps/web/AGENTS.md
