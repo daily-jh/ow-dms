@@ -5,13 +5,9 @@ import type { SearchParams } from '../components';
 import { DEMO_MODE, DemoBanner, Flash } from '../components';
 
 const ACCOUNTS = [
-  ['a.goods', '이물품', 'A기관 · 물품담당'],
   ['a.donation', '김후원', 'A기관 · 후원담당'],
-  ['a.approver', '박승인', 'A기관 · 승인권자'],
-  ['a.accounting', '최회계', 'A기관 · 회계담당'],
-  ['a.auditor', '오감사', 'A기관 · 감사'],
-  ['b.goods', '윤물품', 'B기관 · 물품담당'],
-  ['b.approver', '임승인', 'B기관 · 승인권자'],
+  ['a.admin', '한관리', 'A기관 · 시스템 관리자'],
+  ['b.donation', '윤후원', 'B기관 · 후원담당'],
 ] as const;
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {

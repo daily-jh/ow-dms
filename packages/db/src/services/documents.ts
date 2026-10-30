@@ -1,4 +1,4 @@
-import { DomainError, snapshotHash } from '@owdms/domain';
+import { rolesAllow, type Role, DomainError, snapshotHash } from '@owdms/domain';
 import { TEMPLATES, renderDocument, type DocumentType } from '@owdms/documents';
 import type { ActorContext } from '../pool';
 import { audit, requireAction, type Db } from './common';
@@ -12,6 +12,7 @@ async function institutionName(db: Db): Promise<string> {
 
 /** 원장에서 문서용 스냅샷을 만든다. 승인 전이면 초안 표시. */
 async function buildSnapshot(db: Db, ctx: ActorContext, type: DocumentType, sourceId: string) {
+  requireAction(ctx, type === 'MONEY_RECEIPT_NOTE' ? 'money.read' : 'goods.read');
   if (type === 'GOODS_RECEIPT_CERT') {
     const g = await getGoodsReceipt(db, ctx, sourceId);
     return {
@@ -109,6 +110,7 @@ export async function renderStoredDocument(db: Db, ctx: ActorContext, id: string
   const r = await db.query(`select * from generated_documents where id = $1`, [id]);
   const d = r.rows[0];
   if (!d) throw new DomainError('NOT_FOUND', '문서를 찾을 수 없습니다.');
+  requireAction(ctx, d.document_type === 'MONEY_RECEIPT_NOTE' ? 'money.read' : 'goods.read');
   const { html, outputHash } = renderDocument(
     d.document_type as DocumentType,
     { ...d.snapshot.header, documentId: d.id, generatedAt: (d.generated_at as Date).toISOString(), snapshotHash: d.snapshot_hash },
@@ -124,8 +126,9 @@ export async function listDocuments(db: Db, ctx: ActorContext, q: { sourceId?: s
   requireAction(ctx, 'document.read');
   const r = await db.query(
     `select id, document_type, source_type, source_id, source_version, is_draft, generated_at, generated_by_job
-       from generated_documents where ($1::uuid is null or source_id = $1) order by generated_at desc, id limit 200`,
-    [q.sourceId ?? null],
+       from generated_documents where ($1::uuid is null or source_id = $1)
+         and (($2::boolean and document_type = 'MONEY_RECEIPT_NOTE') or ($3::boolean and document_type <> 'MONEY_RECEIPT_NOTE')) order by generated_at desc, id limit 200`,
+    [q.sourceId ?? null, rolesAllow(ctx.roles as Role[], 'money.read'), rolesAllow(ctx.roles as Role[], 'goods.read')],
   );
   return r.rows.map((d) => ({
     id: d.id as string, documentType: d.document_type as string, title: TEMPLATES[d.document_type as DocumentType]?.title ?? d.document_type,

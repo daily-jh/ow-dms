@@ -4,6 +4,7 @@ import type pg from 'pg';
 import { createApp } from '@owdms/api';
 import { SEED } from '@owdms/db';
 import { setupTestDb } from '../integration/helpers';
+import { moneyFormInput } from '../../apps/web/lib/money-form';
 
 let app: INestApplication;
 let base: string;
@@ -104,6 +105,25 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     expect(Object.keys(r.json.fieldErrors)).toEqual(expect.arrayContaining(['receivedOn', 'lines']));
   });
 
+  it('후원금 화면 값으로 초안을 저장하고 필수값 누락·타 기관·권한초과는 거부한다', async () => {
+    const staff = api(await login('a.donation'));
+    const f = new FormData();
+    for (const [k, v] of Object.entries({ facilityId: SEED.facilityA, amount: '100,000', fundId0: SEED.fundGeneralA, fundAmount0: '100,000', receivedOn: '2026-10-30', method: 'BANK_TRANSFER' })) f.set(k, v);
+    const { errors, input } = moneyFormInput(f);
+    expect(errors).toEqual({});
+    const saved = await staff('POST', '/v1/money-receipts', input, { 'Idempotency-Key': 'money-form-regression-0001' });
+    expect(saved.status).toBe(201);
+    const list = await staff('GET', '/v1/money-receipts');
+    expect(list.json.find((r: any) => r.id === saved.json.id)).toMatchObject({ status: 'DRAFT', amount: '100000' });
+    expect((await staff('POST', '/v1/money-receipts', { ...input, facilityId: null, fundLines: [] })).status).toBe(422);
+    expect((await staff('POST', '/v1/money-receipts', { ...input, facilityId: SEED.facilityB })).status).toBe(404);
+    const goods = api(await login('a.goods'));
+    expect((await goods('POST', '/v1/money-receipts', input)).status).toBe(403);
+    const admin = api(await login('a.admin'));
+    expect((await admin('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: false })).status).toBe(422);
+    expect((await staff('POST', '/v1/settings/presets/yeonmu', { legalEntityId: SEED.legalA, fundKeys: ['GENERAL'], reviewed: true })).status).toBe(403);
+  });
+
   it('T11 같은 Idempotency-Key 재전송은 같은 결과, 다른 내용은 409', async () => {
     const goods = api(await login('a.goods'));
     const body = { facilityId: SEED.facilityA, receivedOn: '2026-10-29', lines: [{ itemId: SEED.itemWaterA, warehouseId: SEED.warehouseA1, quantity: '6', unit: '병' }] };
@@ -154,4 +174,24 @@ describe('API 수직 기능: 로그인 → 초안 → 승인 → 재고 → 문�
     const events = await auditor('GET', '/v1/audit-events?category=LEDGER');
     expect(events.json.some((e: any) => e.action === 'correction.apply.reversal')).toBe(true);
   });
+});
+
+
+it('후원담당 단독 저장·확정 API는 중복저장 방지와 권한 검사를 함께 적용한다', async () => {
+  const staff = api(await login('a.donation'));
+  const goods = api(await login('a.goods'));
+  const body = { facilityId: SEED.facilityA, amount: '67890', method: 'BANK_TRANSFER', receivedOn: '2026-12-05',
+    fundLines: [{ fundId: SEED.fundGeneralA, amount: '67890' }], sourceChannel: 'HAPPYBEAN', projectName: '가상 모금', evidenceRef: 'TEST-002' };
+  const denied = await goods('POST', '/v1/money-receipts/record', body);
+  expect(denied.status).toBe(403);
+  const saved = await staff('POST', '/v1/money-receipts/record', body, { 'Idempotency-Key': 'staff-record-001' });
+  expect(saved.status).toBe(201);
+  expect(saved.json.status).toBe('APPROVED');
+  const replay = await staff('POST', '/v1/money-receipts/record', body, { 'Idempotency-Key': 'staff-record-001' });
+  expect(replay.json.id).toBe(saved.json.id);
+  const invalid = await staff('POST', '/v1/money-receipts/record', { ...body, facilityId: null, fundLines: [] });
+  expect(invalid.status).toBe(422);
+  const rows = await staff('GET', '/v1/money-receipts');
+  expect(rows.json.filter((r: any) => r.id === saved.json.id)).toHaveLength(1);
+  expect(rows.json.find((r: any) => r.id === saved.json.id)).toMatchObject({ sourceChannel: 'HAPPYBEAN', projectName: '가상 모금', evidenceRef: 'TEST-002' });
 });

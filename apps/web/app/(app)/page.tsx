@@ -3,14 +3,14 @@ import { apiIfAllowed } from '@/lib/api';
 import { won } from '@/lib/format';
 
 interface Dashboard {
-  businessDate: string; pendingApprovals: number; goodsDrafts: number; moneyDrafts: number; unconfirmedValuations: number;
-  expiringLots: number; distributionsToPost: number; externalPending: number; unmatchedDeposits: number; pledgesInArrears: number | null; monthConfirmedIncome: string; monthGoodsReceipts: number;
+  businessDate: string; pendingApprovals: number | null; goodsDrafts: number; moneyDrafts: number | null; unconfirmedValuations: number;
+  expiringLots: number; distributionsToPost: number; externalPending: number; unmatchedDeposits: number | null; pledgesInArrears: number | null; monthConfirmedIncome: string | null; monthGoodsReceipts: number;
 }
 
 export default async function TodayPage() {
   const d = await apiIfAllowed<Dashboard>('/v1/dashboard');
   if (!d) {
-    // 기관관리자처럼 장부 열람 권한이 없는 역할(관리자라는 이유로 업무자료를 다 보지 않는다)
+    // 시스템 관리자처럼 장부 열람 권한이 없는 역할(관리자라는 이유로 업무자료를 다 보지 않는다)
     return (
       <>
         <h1>오늘의 업무</h1>
@@ -24,11 +24,11 @@ export default async function TodayPage() {
     );
   }
   const tasks = [
-    { n: d.pendingApprovals, l: '승인 대기', href: '/approvals' },
-    { n: d.goodsDrafts + d.moneyDrafts, l: '승인 요청 전 초안·반려', href: '/goods' },
-    { n: d.unmatchedDeposits, l: '통장 미대조 입금', href: '/money/import' },
+    ...(d.pendingApprovals === null ? [] : [{ n: d.pendingApprovals, l: '이전 미확정 내역', href: '/approvals' }]),
+    { n: d.goodsDrafts + (d.moneyDrafts ?? 0), l: '확정 전 임시저장', href: '/goods' },
+    ...(d.unmatchedDeposits === null ? [] : [{ n: d.unmatchedDeposits, l: '통장 미대조 입금', href: '/money/import' }]),
     ...(d.pledgesInArrears === null ? [] : [{ n: d.pledgesInArrears, l: '지난달까지 미납 있는 약정', href: '/pledges?arrears=1' }]),
-    { n: d.distributionsToPost, l: '승인됐지만 출고 미반영 배분', href: '/distributions' },
+    { n: d.distributionsToPost, l: '확정 후 출고할 배분', href: '/distributions' },
     { n: d.unconfirmedValuations, l: '가액 미확정 후원품 행', href: '/goods' },
     { n: d.expiringLots, l: '30일 내 유효기한 로트', href: '/stock' },
     { n: d.externalPending, l: '희망이음 등록확인 대기', href: '/integrations' },
@@ -48,8 +48,8 @@ export default async function TodayPage() {
       </div>
       <div className="section-title">이번 달</div>
       <div className="grid">
-        <div className="tile"><div className="n">{won(d.monthConfirmedIncome)}</div><div className="l">이번 달 승인된 후원금 수납(수납일 기준)</div></div>
-        <div className="tile"><div className="n">{d.monthGoodsReceipts}건</div><div className="l">이번 달 승인된 후원품 수입(헤더 건수)</div></div>
+        {d.monthConfirmedIncome !== null && <div className="tile"><div className="n">{won(d.monthConfirmedIncome)}</div><div className="l">이번 달 확정된 후원금 수납(수납일 기준)</div></div>}
+        <div className="tile"><div className="n">{d.monthGoodsReceipts}건</div><div className="l">이번 달 확정된 후원품 수입(헤더 건수)</div></div>
       </div>
       <p className="muted" style={{ marginTop: 16 }}>약정액은 수입에 포함하지 않습니다. 서로 다른 단위의 후원품 수량은 합산하지 않습니다.</p>
     </>

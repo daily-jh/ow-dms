@@ -1,12 +1,13 @@
-import { DomainError, assertCanDecide, assertFundLinesMatch, formatQty, parseQty, parseWon, snapshotHash } from '@owdms/domain';
+import { rolesAllow, type Role, DomainError, assertCanDecide, assertFundLinesMatch, formatQty, parseQty, parseWon, snapshotHash } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { assertPeriodOpen, audit, enqueueOutbox, requireAction, type Db } from './common';
 import { getDistributionSnapshot, reserveForDistribution } from './distributions';
 import { getMoneyReceiptSnapshot } from './money';
-import { applyCorrection, rejectCorrection } from './corrections';
+import { applyCorrection, rejectCorrection, requestCorrection } from './corrections';
 
 export type ApprovalTarget = 'GOODS_RECEIPT' | 'MONEY_RECEIPT' | 'DISTRIBUTION';
 
+const DRAFT_ACTION = { GOODS_RECEIPT: 'goods.draft', MONEY_RECEIPT: 'money.draft', DISTRIBUTION: 'distribution.draft' } as const;
 const TABLE: Record<ApprovalTarget, string> = {
   GOODS_RECEIPT: 'goods_receipts',
   MONEY_RECEIPT: 'money_receipts',
@@ -46,6 +47,7 @@ function businessDate(type: ApprovalTarget, row: Record<string, string>): string
 /** 초안을 승인 요청한다. 스냅샷 해시를 고정해 승인·문서·연계가 같은 버전을 쓰게 한다. */
 export async function requestApproval(db: Db, ctx: ActorContext, type: ApprovalTarget, targetId: string) {
   requireAction(ctx, 'approval.request');
+  requireAction(ctx, DRAFT_ACTION[type]);
   const lockRow = await db.query(`select status, version from ${TABLE[type]} where id = $1 for update`, [targetId]);
   const row = lockRow.rows[0];
   if (!row) throw new DomainError('NOT_FOUND', '대상을 찾을 수 없습니다.');
@@ -73,17 +75,22 @@ export async function decideApproval(
   decision: { decision: 'APPROVE' | 'REJECT'; reason?: string | null },
 ) {
   requireAction(ctx, 'approval.decide');
+  return decideInternal(db, ctx, approvalId, decision);
+}
+
+// Only server-authorized direct confirmation can opt out of the old two-person decision rule.
+async function decideInternal(db: Db, ctx: ActorContext, approvalId: string, decision: { decision: 'APPROVE' | 'REJECT'; reason?: string | null }, direct = false) {
   const a = await db.query(`select * from approvals where id = $1 for update`, [approvalId]);
   const ap = a.rows[0];
   if (!ap) throw new DomainError('NOT_FOUND', '승인 요청을 찾을 수 없습니다.');
-  if (ap.target_type === 'CORRECTION') return decideCorrection(db, ctx, ap, decision);
+  if (ap.target_type === 'CORRECTION') return decideCorrection(db, ctx, ap, decision, direct);
   const type = ap.target_type as ApprovalTarget;
   const target = await db.query(`select status, version from ${TABLE[type]} where id = $1 for update`, [ap.target_id]);
   const tr = target.rows[0];
   if (!tr) throw new DomainError('NOT_FOUND', '대상을 찾을 수 없습니다.');
   assertCanDecide({
     approvalStatus: ap.status, requestedBy: ap.requested_by, decidedBy: ctx.userId, approvalTargetVersion: ap.target_version,
-    currentTargetVersion: tr.version, selfApprovalException: ctx.selfApprovalException,
+    currentTargetVersion: tr.version, selfApprovalException: direct || ctx.selfApprovalException,
   });
 
   if (decision.decision === 'REJECT') {
@@ -130,10 +137,11 @@ async function decideCorrection(
   ctx: ActorContext,
   ap: { id: string; target_id: string; target_version: number; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'INVALIDATED'; requested_by: string },
   decision: { decision: 'APPROVE' | 'REJECT'; reason?: string | null },
+  direct = false,
 ) {
   assertCanDecide({
     approvalStatus: ap.status, requestedBy: ap.requested_by, decidedBy: ctx.userId, approvalTargetVersion: ap.target_version,
-    currentTargetVersion: ap.target_version, selfApprovalException: ctx.selfApprovalException,
+    currentTargetVersion: ap.target_version, selfApprovalException: direct || ctx.selfApprovalException,
   });
   if (decision.decision === 'REJECT') {
     if (!decision.reason?.trim()) throw new DomainError('VALIDATION_FAILED', '반려 사유를 입력하십시오.', { reason: '필수' });
@@ -177,8 +185,9 @@ export async function listApprovals(db: Db, ctx: ActorContext, q: { status?: str
             a.reason, a.requested_by, ru.display_name as requested_by_name, du.display_name as decided_by_name
        from approvals a join users ru on ru.id = a.requested_by left join users du on du.id = a.decided_by
       where ($1::text is null or a.status = $1)
+        and ($2::boolean or (a.target_type <> 'MONEY_RECEIPT' and (a.target_type <> 'CORRECTION' or a.snapshot->'target'->>'type' <> 'MONEY_RECEIPT')))
       order by a.requested_at desc, a.id limit 200`,
-    [q.status ?? null],
+    [q.status ?? null, rolesAllow(ctx.roles as Role[], 'money.read')],
   );
   return r.rows.map((a) => ({
     id: a.id as string, targetType: a.target_type as ApprovalTarget | 'CORRECTION', targetId: a.target_id as string, targetVersion: a.target_version as number,
@@ -187,4 +196,41 @@ export async function listApprovals(db: Db, ctx: ActorContext, q: { status?: str
     reason: a.reason as string | null, requestedBy: a.requested_by as string, requestedByName: a.requested_by_name as string,
     decidedByName: (a.decided_by_name ?? null) as string | null,
   }));
+}
+
+/** 담당자 본인이 확정. 기존 상태/스냅샷/재고/마감 검사는 그대로 사용한다. */
+export async function confirmTransaction(db: Db, ctx: ActorContext, type: ApprovalTarget, targetId: string) {
+  requireAction(ctx, DRAFT_ACTION[type]);
+  const r = await db.query(`select status from ${TABLE[type]} where id = $1 for update`, [targetId]);
+  if (!r.rowCount) throw new DomainError('NOT_FOUND', '대상을 찾을 수 없습니다.');
+  if (r.rows[0].status === 'APPROVED') return { status: 'APPROVED' as const };
+  let approvalId: string;
+  if (r.rows[0].status === 'PENDING_APPROVAL') {
+    const a = await db.query(`select id from approvals where target_type = $1 and target_id = $2 and status = 'PENDING'`, [type, targetId]);
+    if (a.rowCount !== 1) throw new DomainError('INVALID_STATE_TRANSITION', '확정 이력을 확인해 주세요.');
+    approvalId = a.rows[0].id;
+  } else {
+    approvalId = (await requestApproval(db, ctx, type, targetId)).approvalId;
+  }
+  const result = await decideInternal(db, ctx, approvalId, { decision: 'APPROVE', reason: '담당자 직접 확정' }, true);
+  await audit(db, ctx, { category: 'LEDGER', action: 'transaction.confirm', resourceType: type, resourceId: targetId });
+  return result;
+}
+
+export async function confirmCorrection(db: Db, ctx: ActorContext, input: Parameters<typeof requestCorrection>[2]) {
+  requireAction(ctx, DRAFT_ACTION[input.targetType]);
+  const r = await requestCorrection(db, ctx, input);
+  await decideInternal(db, ctx, r.approvalId, { decision: 'APPROVE', reason: input.reason }, true);
+  return r;
+}
+
+/** 전환 전에 남아 있던 정정 대기도 담당자가 처리할 수 있다. */
+export async function confirmPendingCorrection(db: Db, ctx: ActorContext, approvalId: string) {
+  const a = await db.query(`select snapshot, target_type from approvals where id = $1`, [approvalId]);
+  if (!a.rowCount) throw new DomainError('NOT_FOUND', '처리할 내역이 없습니다.');
+  const row = a.rows[0];
+  if (row.target_type !== 'CORRECTION') throw new DomainError('VALIDATION_FAILED', '정정 내역이 아닙니다.');
+  const type = row.snapshot.target.type as ApprovalTarget;
+  requireAction(ctx, DRAFT_ACTION[type]);
+  return decideInternal(db, ctx, approvalId, { decision: 'APPROVE', reason: '담당자 직접 정정 확정' }, true);
 }

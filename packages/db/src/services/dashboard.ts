@@ -30,17 +30,17 @@ export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: st
   const pledgesInArrears = rolesAllow(ctx.roles as Role[], 'money.read') ? await countPledgesInArrears(db, ctx, businessDate.slice(0, 7)) : null;
   return {
     businessDate,
-    pendingApprovals: x.pending_approvals as number,
+    pendingApprovals: rolesAllow(ctx.roles as Role[], 'money.read') ? x.pending_approvals as number : null,
     goodsDrafts: x.goods_drafts as number,
-    moneyDrafts: x.money_drafts as number,
+    moneyDrafts: rolesAllow(ctx.roles as Role[], 'money.read') ? x.money_drafts as number : null,
     unconfirmedValuations: x.unconfirmed_valuations as number,
     expiringLots: x.expiring_lots as number,
     distributionsToPost: x.distributions_to_post as number,
     externalPending: x.external_pending as number,
-    unmatchedDeposits: x.unmatched_deposits as number,
+    unmatchedDeposits: rolesAllow(ctx.roles as Role[], 'money.read') ? x.unmatched_deposits as number : null,
     pledgesInArrears,
     // 집계 기준: 승인된 수납, 실제 수납일(received_on) 기준
-    monthConfirmedIncome: x.month_confirmed_income as string,
+    monthConfirmedIncome: rolesAllow(ctx.roles as Role[], 'money.read') ? x.month_confirmed_income as string : null,
     monthGoodsReceipts: x.month_goods_receipts as number,
   };
 }

@@ -25,7 +25,7 @@ export function Flash({ sp }: { sp: Record<string, string | string[] | undefined
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-/** 승인 후 정정 요청 폼. 원거래는 수정하지 않고 승인 시 역거래로 반영된다. */
+/** 확정 후 정정 확정 폼. 원거래는 수정하지 않고 승인 시 역거래로 반영된다. */
 export function CorrectionForm({ targetType, targetId, returnTo, label, needsInspection = false, action }: {
   targetType: string; targetId: string; returnTo: string; label: string; needsInspection?: boolean; action: (f: FormData) => Promise<void>;
 }) {
@@ -41,7 +41,7 @@ export function CorrectionForm({ targetType, targetId, returnTo, label, needsIns
             <input type="checkbox" name="inspectionConfirmed" required style={{ width: 'auto' }} /> 회수·상태검사 확인
           </label>
         )}
-        <button type="submit" className="danger">정정 요청</button>
+        <button type="submit" className="danger">정정 확정</button>
       </form>
     </details>
   );

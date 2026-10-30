@@ -29,7 +29,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       </div>
       {receipts && can(me, 'integration.prepare') && (
         <form action={createBatch} className="card">
-          <h2 style={{ fontSize: 16, marginTop: 0 }}>승인된 후원품 수입으로 내부 검토 배치 만들기</h2>
+          <h2 style={{ fontSize: 16, marginTop: 0 }}>확정된 후원품 수입으로 내부 검토 배치 만들기</h2>
           <input type="hidden" name="idempotencyKey" value={newKey('batch')} />
           {receipts.map((r) => (
             <label key={r.id} className="row" style={{ color: 'var(--text)' }}>

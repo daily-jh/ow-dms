@@ -17,7 +17,7 @@ interface Donor { id: string; displayName: string }
 
 const VIEWS = { active: '진행 중', ended: '끝난 약정', all: '전체' } as const;
 const METHODS = { BANK_TRANSFER: '자동이체·계좌이체', CMS: 'CMS', CARD: '카드', OTHER: '기타' } as const;
-/** 상태는 색과 글자를 함께 쓴다. 승인된 후원금만 '납입'이다. */
+/** 상태는 색과 글자를 함께 쓴다. 확정된 후원금만 '납입'이다. */
 const MONTH: Record<MonthStatus, [string, string]> = {
   PAID: ['APPROVED', '납입'], PARTIAL: ['PENDING', '일부'], PENDING: ['PENDING_APPROVAL', '승인 대기'],
   UNPAID: ['REJECTED', '미납'], UPCOMING: ['CANCELLED', '예정'], NOT_DUE: ['', '—'],
@@ -42,7 +42,7 @@ export default async function PledgesPage({ searchParams }: { searchParams: Sear
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1>정기후원 약정</h1>
-          <p className="lead">약정은 수입이 아닙니다. 실제 입금을 후원금으로 연결하고 승인해야 그 달이 &lsquo;납입&rsquo;으로 표시됩니다.</p>
+          <p className="lead">약정은 수입이 아닙니다. 실제 입금을 후원금으로 연결하고 확정해야 그 달이 &lsquo;납입&rsquo;으로 표시됩니다.</p>
         </div>
         {canWrite && <Link className="btn secondary" href="/money/import">통장 입금 연결하기</Link>}
       </div>
@@ -61,7 +61,7 @@ export default async function PledgesPage({ searchParams }: { searchParams: Sear
           <summary style={{ cursor: 'pointer', fontWeight: 600 }}>약정 등록</summary>
           <form action={createPledge} style={{ marginTop: 12 }}>
             <input type="hidden" name="idempotencyKey" value={newKey('pledge')} />
-            <input type="hidden" name="facilityId" value={ref.facilities[0]?.id} />
+            <select name="facilityId" aria-label="시설" required defaultValue={ref.facilities.length === 1 ? ref.facilities[0]!.id : ''}><option value="">시설 선택</option>{ref.facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
             <div className="fields">
               <div><label htmlFor="donorId">후원자</label>
                 <select id="donorId" name="donorId" required>
@@ -140,7 +140,7 @@ export default async function PledgesPage({ searchParams }: { searchParams: Sear
         </div>
       )}
       <p className="muted">
-        납입: 승인된 후원금 합계가 약정액 이상 · 일부: 승인 합계가 약정액보다 적음 · 승인 대기: 초안·승인 요청 중 · 미납: 연결된 후원금 없음 · 예정: 아직 오지 않은 달.
+        납입: 확정된 후원금 합계가 약정액 이상 · 일부: 승인 합계가 약정액보다 적음 · 승인 대기: 초안·확정하기 중 · 미납: 연결된 후원금 없음 · 예정: 아직 오지 않은 달.
         늦게 낸 달은 후원금 입력에서 &lsquo;몇 월분&rsquo;을 골라 연결합니다. 미납 안내 연락 여부·방법은 기관 검토 필요.
       </p>
     </>

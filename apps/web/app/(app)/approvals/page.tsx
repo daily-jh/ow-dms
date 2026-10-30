@@ -1,6 +1,6 @@
 import { getMe, requirePage } from '@/lib/nav';
 import { api, can, type Me } from '@/lib/api';
-import { decideApproval } from '@/lib/actions';
+import { requestApproval, confirmPendingCorrection } from '@/lib/actions';
 import { CORRECTION_LABEL, TARGET_LABEL, won } from '@/lib/format';
 import { Flash, Status, type SearchParams } from '../../components';
 
@@ -23,13 +23,12 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Se
   const [me, pending, recent] = await Promise.all([
     getMe(), api<Approval[]>('/v1/approvals?status=PENDING'), api<Approval[]>('/v1/approvals'),
   ]);
-  const canDecide = can(me, 'approval.decide');
+  const canConfirm = (a: Approval) => can(me, (a.targetType === 'CORRECTION' ? a.snapshot.target.type : a.targetType) === 'MONEY_RECEIPT' ? 'money.draft' : (a.targetType === 'CORRECTION' ? a.snapshot.target.type : a.targetType) === 'DISTRIBUTION' ? 'distribution.draft' : 'goods.draft');
   return (
     <>
-      <h1>승인함</h1>
-      <p className="lead">요청 당시 스냅샷을 승인합니다. 본인이 요청한 건은 승인할 수 없습니다. 승인은 원장·재고 반영과 한 트랜잭션으로 처리됩니다.</p>
+      <h1>확정·정정 이력</h1>
+      <p className="lead">별도 결재권자 없이 후원담당자가 직접 확정합니다. 이전에 남아 있던 미확정 내역도 여기에서 처리할 수 있습니다.</p>
       <Flash sp={sp} />
-      {!canDecide && <p className="msg warn">현재 계정에는 승인 권한이 없습니다. 승인권자 계정(a.approver)으로 로그인하십시오.</p>}
       <table>
         <thead><tr><th>구분</th><th>내용</th><th>요청</th><th>상태</th><th>결정</th></tr></thead>
         <tbody>
@@ -40,23 +39,17 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Se
               <td>{a.requestedByName}<div className="muted">{new Date(a.requestedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</div></td>
               <td><Status value={a.status} /></td>
               <td>
-                {canDecide && a.requestedBy !== me.userId ? (
-                  <div className="row">
-                    <form action={decideApproval} className="inline">
-                      <input type="hidden" name="approvalId" value={a.id} /><input type="hidden" name="decision" value="APPROVE" />
-                      <button type="submit">승인</button>
-                    </form>
-                    <form action={decideApproval} className="row">
-                      <input type="hidden" name="approvalId" value={a.id} /><input type="hidden" name="decision" value="REJECT" />
-                      <input name="reason" placeholder="반려 사유" aria-label="반려 사유" required style={{ width: 140 }} />
-                      <button type="submit" className="danger">반려</button>
-                    </form>
-                  </div>
-                ) : <span className="muted">{a.requestedBy === me.userId ? '본인 요청' : '권한 없음'}</span>}
+                {canConfirm(a) ? <form action={a.targetType === 'CORRECTION' ? confirmPendingCorrection : requestApproval}>
+                  <input type="hidden" name="approvalId" value={a.id} />
+                  <input type="hidden" name="targetType" value={a.targetType} />
+                  <input type="hidden" name="targetId" value={a.targetId} />
+                  <input type="hidden" name="returnTo" value="/approvals" />
+                  <button type="submit">{a.targetType === 'CORRECTION' ? '정정 확정' : '확정하기'}</button>
+                </form> : <span className="muted">조회 전용</span>}
               </td>
             </tr>
           ))}
-          {pending.length === 0 && <tr><td colSpan={5} className="muted">승인 대기 건이 없습니다.</td></tr>}
+          {pending.length === 0 && <tr><td colSpan={5} className="muted">미확정 건이 없습니다.</td></tr>}
         </tbody>
       </table>
       <h2 style={{ fontSize: 17, marginTop: 24 }}>최근 처리</h2>

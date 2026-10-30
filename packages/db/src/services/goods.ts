@@ -32,6 +32,9 @@ export async function createGoodsReceiptDraft(db: Db, ctx: ActorContext, input: 
   await assertActiveMaster(db, 'facilities', [input.facilityId]);
   await assertActiveMaster(db, 'items', input.lines.map((l) => l.itemId));
   await assertActiveMaster(db, 'warehouses', input.lines.map((l) => l.warehouseId));
+  const warehouses = await db.query(`select id from warehouses where id = any($1::uuid[]) and facility_id <> $2`, [input.lines.map(l => l.warehouseId), input.facilityId]);
+  if (warehouses.rowCount) throw new DomainError('VALIDATION_FAILED', '선택한 시설에 속한 창고를 선택해 주세요.');
+
   const header = await db.query<{ id: string; version: number }>(
     `insert into goods_receipts (tenant_id, facility_id, donor_id, received_on, memo, created_by)
      values (app_tenant(), $1, $2, $3, $4, $5) returning id, version`,

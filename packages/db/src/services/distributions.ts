@@ -1,6 +1,6 @@
 import { DomainError, assertCanIssue, formatQty, parsePositiveQty, parseQty, type Qty } from '@owdms/domain';
 import type { ActorContext } from '../pool';
-import { assertDate, assertPeriodOpen, audit, enqueueOutbox, requireAction, type Db } from './common';
+import { assertActiveMaster, assertDate, assertPeriodOpen, audit, enqueueOutbox, requireAction, type Db } from './common';
 
 export async function createDistributionDraft(
   db: Db,
@@ -23,6 +23,13 @@ export async function createDistributionDraft(
   }
   if (!input.lines?.length) throw new DomainError('VALIDATION_FAILED', '배분 품목을 입력하십시오.', { lines: '1행 이상' });
   await assertPeriodOpen(db, input.plannedOn);
+  await assertActiveMaster(db, 'facilities', [input.facilityId]);
+  await assertActiveMaster(db, 'warehouses', input.lines.map(l => l.warehouseId));
+  for (const l of input.lines) {
+    if (!(await db.query('select 1 from lots where id = $1', [l.lotId])).rowCount) throw new DomainError('NOT_FOUND', '재고를 찾을 수 없습니다.');
+    const match = await db.query(`select 1 from warehouses w join stock_balances b on b.warehouse_id = w.id where w.id = $1 and w.facility_id = $2 and b.lot_id = $3`, [l.warehouseId, input.facilityId, l.lotId]);
+    if (!match.rowCount) throw new DomainError('VALIDATION_FAILED', '선택한 시설의 창고·재고를 선택해 주세요.');
+  }
   const r = await db.query<{ id: string; version: number }>(
     `insert into distributions (tenant_id, facility_id, program_name, recipient_ref, planned_on, created_by)
      values (app_tenant(), $1, $2, $3, $4, $5) returning id, version`,

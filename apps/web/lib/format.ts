@@ -8,9 +8,9 @@ export function won(value: string | null | undefined): string {
 
 export const STATUS_LABEL: Record<string, string> = {
   DRAFT: '초안',
-  PENDING_APPROVAL: '승인대기',
-  PENDING: '승인대기',
-  APPROVED: '승인됨',
+  PENDING_APPROVAL: '확정 대기',
+  PENDING: '확정 대기',
+  APPROVED: '확정됨',
   POSTED: '출고완료',
   REJECTED: '반려',
   REVERSED: '역거래',
@@ -29,7 +29,7 @@ export const STATUS_LABEL: Record<string, string> = {
 
 export const VALUATION_LABEL: Record<string, string> = { UNCONFIRMED: '가액 미확정', PROPOSED: '평가안(미승인)', CONFIRMED: '가액 확정' };
 
-export const TARGET_LABEL: Record<string, string> = { GOODS_RECEIPT: '후원품 수입', MONEY_RECEIPT: '후원금 수입', DISTRIBUTION: '후원품 배분', CORRECTION: '정정 요청' };
+export const TARGET_LABEL: Record<string, string> = { GOODS_RECEIPT: '후원품 수입', MONEY_RECEIPT: '후원금 수입', DISTRIBUTION: '후원품 배분', CORRECTION: '정정 확정' };
 
 export const CORRECTION_LABEL: Record<string, string> = { REVERSAL: '역거래(취소)', CANCEL: '배분 취소(출고 전)', RETURN: '반품(출고 후)' };
 
@@ -39,6 +39,5 @@ export function newKey(prefix: string): string {
 
 /** 직원 계정에 줄 수 있는 역할(시스템 작업 계정 제외). */
 export const ROLE_OPTIONS: [string, string][] = [
-  ['DONATION_STAFF', '후원담당'], ['GOODS_STAFF', '물품담당'], ['ACCOUNTING', '회계담당'], ['APPROVER', '승인권자'],
-  ['RECEIPT_STAFF', '영수증담당'], ['INSTITUTION_ADMIN', '기관관리자'], ['AUDITOR', '감사/개인정보책임자'],
+  ['DONATION_STAFF', '후원담당'], ['INSTITUTION_ADMIN', '시스템 관리자'],
 ];

@@ -1,4 +1,4 @@
-import { DomainError, formatQty, parseQty, snapshotHash } from '@owdms/domain';
+import { rolesAllow, type Role, DomainError, formatQty, parseQty, snapshotHash } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { assertDate, assertPeriodOpen, audit, enqueueOutbox, requireAction, type Db } from './common';
 
@@ -186,8 +186,8 @@ export async function listCorrections(db: Db, ctx: ActorContext, q: { targetId?:
   const r = await db.query(
     `select c.id, c.target_type, c.target_id, c.kind, c.business_date, c.reason, c.status, c.requested_at, c.applied_at, u.display_name
        from correction_events c join users u on u.id = c.requested_by
-      where ($1::uuid is null or c.target_id = $1) order by c.requested_at desc, c.id limit 200`,
-    [q.targetId ?? null],
+      where ($1::uuid is null or c.target_id = $1) and ($2::boolean or c.target_type <> 'MONEY_RECEIPT') order by c.requested_at desc, c.id limit 200`,
+    [q.targetId ?? null, rolesAllow(ctx.roles as Role[], 'money.read')],
   );
   return r.rows.map((c) => ({
     id: c.id as string, targetType: c.target_type as string, targetId: c.target_id as string, kind: c.kind as CorrectionKind,

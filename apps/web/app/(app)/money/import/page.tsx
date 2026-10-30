@@ -43,7 +43,7 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1>통장·엑셀 가져오기</h1>
-          <p className="lead">은행 거래내역이나 엑셀로 정리한 후원금 목록을 올리면 후원금 초안으로 만듭니다. 승인 전에는 수입이 아닙니다.</p>
+          <p className="lead">은행 거래내역이나 엑셀로 정리한 후원금 목록을 올리면 후원금 초안으로 만듭니다. 확정 전에는 수입이 아닙니다.</p>
         </div>
         <Link className="btn secondary" href="/money">후원금 목록</Link>
       </div>
@@ -99,7 +99,7 @@ export default async function BankImportPage({ searchParams }: { searchParams: S
                       <>
                         <form action={bankToReceipt} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 0.9fr auto', gap: 6, alignItems: 'end' }}>
                           <input type="hidden" name="txId" value={t.id} /><input type="hidden" name="label" value={label} />
-                          <input type="hidden" name="facilityId" value={facilityId} /><input type="hidden" name="view" value={view} />
+                          <select name="facilityId" aria-label="시설" required defaultValue={ref.facilities.length === 1 ? ref.facilities[0]!.id : ''}><option value="">시설 선택</option>{ref.facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select><input type="hidden" name="view" value={view} />
                           <input type="hidden" name="idempotencyKey" value={newKey('bank-receipt')} />
                           <label>후원자
                             <select name="donor" defaultValue={only} aria-label={`${label} 후원자`}>
