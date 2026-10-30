@@ -100,6 +100,33 @@ await shot('10-audit');
 if (!(await page.locator('table').innerText()).includes('correction.apply.reversal')) throw new Error('감사기록에 정정이 없습니다');
 step('감사기록에서 정정 확인');
 
+// 통장 거래내역 가져오기 → 미대조 입금 → 초안(합성 CSV)
+await page.getByRole('button', { name: '로그아웃' }).click();
+await login('a.donation');
+await page.goto(`${WEB}/money/import`);
+const bankCsv = new URL('./fixtures/bank-synthetic.csv', import.meta.url).pathname;
+await page.setInputFiles('#file', bankCsv);
+await page.getByRole('button', { name: '가져오기' }).click();
+await page.getByText('입금 3건을 새로 가져왔습니다').waitFor();
+await page.setInputFiles('#file', bankCsv);
+await page.getByRole('button', { name: '가져오기' }).click();
+await page.getByText('입금 0건을 새로 가져왔습니다. 이미 있던 거래 3건').waitFor();
+await page.goto(`${WEB}/money/import`);
+const companyRow = page.locator('tbody tr').filter({ has: page.locator('td:nth-child(2)', { hasText: '(주)예시기업-A' }) });
+if ((await companyRow.locator('select[name="donor"]').inputValue()) === '') throw new Error('이름이 같은 후원자 1명이 미리 골라지지 않음');
+const hongRow = page.locator('tbody tr').filter({ has: page.locator('td:nth-child(2)', { hasText: '홍길동(가상)' }) });
+if ((await hongRow.locator('select[name="donor"]').inputValue()) !== '') throw new Error('동명이인인데 자동으로 골라짐');
+await companyRow.getByRole('button', { name: '초안 만들기' }).click();
+await page.waitForURL(/ok=/);
+const interestRow = page.locator('tbody tr').filter({ has: page.locator('td:nth-child(2)', { hasText: '결산이자' }) });
+await interestRow.locator('summary').click();
+await interestRow.getByRole('button', { name: '후원금 아님으로 표시' }).click();
+await page.waitForURL(/ok=/);
+await shot('11-bank-import');
+const left = (await page.locator('tbody').first().locator('tr > td:nth-child(2)').allInnerTexts()).join('\n');
+if (left.includes('예시기업') || left.includes('결산이자') || !left.includes('홍길동')) throw new Error('미대조 목록이 맞지 않음');
+step('통장 거래내역 가져오기: 중복 재반입 0건, 동명이인 자동선택 없음, 입금→초안, 이자 제외');
+
 await page.getByRole('button', { name: '로그아웃' }).click();
 await login('b.goods');
 await page.goto(`${WEB}/stock`);

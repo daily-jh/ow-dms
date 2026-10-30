@@ -19,6 +19,8 @@ describe('메뉴 권한 표', () => {
   it('하위 화면은 상위 메뉴 권한을 따르고 입력 화면은 입력 권한이 필요하다', () => {
     expect(needFor('/goods/abc')).toBe('goods.read');
     expect(needFor('/goods/new')).toBe('goods.draft');
+    expect(needFor('/money/import')).toBe('money.draft');
+    expect(needFor('/money')).toBe('money.read');
     expect(needFor('/admin/users')).toBe('user.manage');
     expect(needFor('/')).toBeUndefined();
     expect(needFor('/account')).toBeUndefined();

@@ -9,3 +9,4 @@ export * from './idempotency';
 export * from './integration';
 export * from './permissions';
 export * from './credentials';
+export * from './bankImport';

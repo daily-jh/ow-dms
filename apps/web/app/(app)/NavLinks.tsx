@@ -6,7 +6,10 @@ import type { NavGroup } from '@/lib/menu';
 
 export function NavLinks({ groups }: { groups: NavGroup[] }) {
   const path = usePathname();
-  const active = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(href + '/'));
+  const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+  const matches = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(href + '/'));
+  const best = hrefs.filter(matches).sort((a, b) => b.length - a.length)[0];
+  const active = (href: string) => href === best;
   return (
     <div className="nav-links">
       {groups.map((g) => (
