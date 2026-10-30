@@ -17,6 +17,12 @@ echo "[1/5] 필요한 프로그램 설치(docker, git)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q docker.io docker-compose-v2 git openssl curl ca-certificates
+# 작은 디스크(예: 10GB)가 컨테이너 기록으로 차지 않도록 기록 파일 크기를 제한한다(처음 한 번).
+if [ ! -f /etc/docker/daemon.json ]; then
+  mkdir -p /etc/docker
+  echo '{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"}}' > /etc/docker/daemon.json
+  systemctl restart docker 2>/dev/null || true
+fi
 systemctl enable --now docker
 
 # 메모리가 작은 서버(예: 1GB)는 스왑을 잡아 둔다(없을 때만 2GB).
@@ -64,6 +70,14 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 echo "[4/5] 이미지 받기·실행"
+# 디스크가 작으면 새 이미지를 받을 자리가 모자랄 수 있어, 먼저 쓰지 않는 옛 이미지·빌드 찌꺼기를 지운다(자료·백업은 그대로).
+docker image prune -f > /dev/null || true
+docker builder prune -af > /dev/null 2>&1 || true
+avail_mb=$(df -Pm / | awk 'NR==2 {print $4}')
+if [ "$avail_mb" -lt 2500 ]; then
+  echo "경고: 남은 디스크가 ${avail_mb}MB입니다. 새 이미지를 받으려면 약 2.5GB가 필요합니다." >&2
+  echo "      'docker system df'로 사용량을 보고, 업체 콘솔에서 스토리지를 늘리는 것을 검토하십시오." >&2
+fi
 # GitHub에서 미리 만든 이미지를 받는다. 받을 수 없으면(비공개·네트워크 문제) 이 서버에서 직접 빌드한다.
 if $COMPOSE pull --quiet; then
   $COMPOSE up -d --no-build
@@ -71,6 +85,8 @@ else
   echo "미리 만든 이미지를 받지 못해 이 서버에서 빌드합니다(10분 이상 걸릴 수 있습니다)."
   $COMPOSE up -d --build
 fi
+# 갱신 뒤 남은 옛 이미지를 지운다.
+docker image prune -f > /dev/null || true
 
 echo "[5/5] 상태"
 $COMPOSE ps --format '{{.Service}}: {{.Status}}'
