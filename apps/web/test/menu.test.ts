@@ -21,6 +21,7 @@ describe('메뉴 권한 표', () => {
     expect(needFor('/goods/new')).toBe('goods.draft');
     expect(needFor('/money/import')).toBe('money.draft');
     expect(needFor('/money')).toBe('money.read');
+    expect(needFor('/pledges')).toBe('money.read');
     expect(needFor('/admin/users')).toBe('user.manage');
     expect(needFor('/')).toBeUndefined();
     expect(needFor('/account')).toBeUndefined();

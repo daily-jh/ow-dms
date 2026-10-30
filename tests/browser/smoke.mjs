@@ -121,11 +121,32 @@ await page.waitForURL(/ok=/);
 const interestRow = page.locator('tbody tr').filter({ has: page.locator('td:nth-child(2)', { hasText: '결산이자' }) });
 await interestRow.locator('summary').click();
 await interestRow.getByRole('button', { name: '후원금 아님으로 표시' }).click();
-await page.waitForURL(/ok=/);
+await page.getByText('후원금 아님으로 표시했습니다').waitFor();
 await shot('11-bank-import');
 const left = (await page.locator('tbody').first().locator('tr > td:nth-child(2)').allInnerTexts()).join('\n');
 if (left.includes('예시기업') || left.includes('결산이자') || !left.includes('홍길동')) throw new Error('미대조 목록이 맞지 않음');
 step('통장 거래내역 가져오기: 중복 재반입 0건, 동명이인 자동선택 없음, 입금→초안, 이자 제외');
+
+// 정기후원 약정: 등록만으로는 수입 아님 → 후원금 입력에서 약정 연결 → '승인 대기'
+await page.goto(`${WEB}/pledges`);
+await page.locator('#donorId').selectOption({ label: '예시기업-A' });
+await page.locator('#amount').fill('50000');
+await page.getByRole('button', { name: '약정 등록' }).click();
+await page.getByText('약정을 등록했습니다').waitFor();
+const pledgeRow = page.locator('tbody tr').filter({ hasText: '예시기업-A' });
+if (!(await pledgeRow.innerText()).includes('미납')) throw new Error('이번 달 약정이 미납으로 보이지 않음');
+await page.goto(`${WEB}/money`);
+await page.locator('#pledge').selectOption({ index: 1 });
+await page.locator('#amount').fill('50000');
+await page.locator('#fundId0').selectOption({ index: 1 });
+await page.locator('#fundAmount0').fill('50000');
+await page.getByRole('button', { name: '초안 저장' }).click();
+await page.getByText('후원금 초안을 저장했습니다').waitFor();
+if (!(await page.locator('table').innerText()).includes('약정 ')) throw new Error('후원금 목록에 약정 연결이 보이지 않음');
+await page.goto(`${WEB}/pledges`);
+if (!(await page.locator('tbody tr').filter({ hasText: '예시기업-A' }).innerText()).includes('승인 대기')) throw new Error('약정 달이 승인 대기로 바뀌지 않음');
+await shot('12-pledges');
+step('정기후원 약정: 등록 → 후원금 입력에서 약정 연결 → 그 달이 승인 대기');
 
 await page.getByRole('button', { name: '로그아웃' }).click();
 await login('b.goods');

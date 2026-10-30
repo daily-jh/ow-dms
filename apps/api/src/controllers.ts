@@ -5,7 +5,7 @@ import {
   ClosePeriodRequest, DecideApprovalRequest, GenerateDocumentRequest, PeriodParam, ReopenPeriodRequest, RequestApprovalRequest,
   RequestCorrectionRequest, CreateLegalEntityRequest, CreateFacilityRequest, CreateWarehouseRequest, CreateItemRequest, CreateFundRequest,
   UpdateMasterRequest, MasterKindParam, ImportBankStatementRequest, ImportMoneySheetRequest, BankReceiptRequest,
-  ExcludeBankTransactionRequest,
+  ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest,
 } from '@owdms/contracts';
 import {
   capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
@@ -15,6 +15,7 @@ import {
   periodChecklist, closePeriod, reopenPeriod, listAuditEvents, listMasterData, createLegalEntity, createFacility, createWarehouse,
   createItem, createFund, updateMaster, importBankStatement, importMoneySheet, listBankTransactions, listImportBatches,
   createReceiptFromBank, excludeBankTransaction, reopenBankTransaction, type BankTxView,
+  createPledge, endPledge, listPledges, type PledgeView,
 } from '@owdms/db';
 import { DomainError } from '@owdms/domain';
 import { z } from 'zod';
@@ -138,6 +139,28 @@ export class LedgerController {
   @Post('bank-transactions/:id/reopen')
   bankReopen(@Req() req: Request, @Param('id') tid: string) {
     return this.rt.mutate(req, (db, ctx) => reopenBankTransaction(db, ctx, id(tid)));
+  }
+
+  /** 정기후원 약정과 최근 월별 납입 상태. 약정은 수입이 아니다. */
+  @Get('pledges')
+  pledges(@Req() req: Request, @Query('view') view?: string, @Query('months') months?: string, @Query('donorId') donorId?: string) {
+    const v: PledgeView = view === 'ended' || view === 'all' ? view : 'active';
+    const n = Number.parseInt(months ?? '', 10);
+    return this.rt.tx(req, (db, ctx) => listPledges(db, ctx, {
+      current: seoulToday().slice(0, 7), view: v, months: Number.isFinite(n) ? n : 6, donorId: donorId ? id(donorId) : undefined,
+    }));
+  }
+
+  @Post('pledges')
+  createPledge(@Req() req: Request, @Body() body: unknown) {
+    const input = CreatePledgeRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => createPledge(db, ctx, input));
+  }
+
+  @Post('pledges/:id/end')
+  endPledge(@Req() req: Request, @Param('id') pid: string, @Body() body: unknown) {
+    const input = EndPledgeRequest.parse(body);
+    return this.rt.mutate(req, (db, ctx) => endPledge(db, ctx, id(pid), input));
   }
 
   @Get('distributions')

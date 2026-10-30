@@ -4,6 +4,7 @@ import { z } from 'zod';
 const uuid = z.uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
 const won = z.string().regex(/^\d{1,15}$/, '원 단위 정수 문자열');
+const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'YYYY-MM');
 const qty = z.string().regex(/^\d{1,12}(\.\d{1,3})?$/, '소수 3자리 이내 수량 문자열');
 
 export const DevLoginRequest = z.object({ username: z.string().min(1).max(64), tenantCode: z.string().max(32).optional() });
@@ -51,6 +52,8 @@ export const CreateMoneyReceiptRequest = z.object({
   method: z.enum(['BANK_TRANSFER', 'CASH', 'CMS', 'CARD', 'OTHER']),
   memo: z.string().max(500).nullish(),
   fundLines: z.array(z.object({ fundId: uuid, amount: won })).min(1).max(50),
+  pledgeId: uuid.nullish(),
+  pledgeMonth: month.nullish(),
 });
 
 export const CreateDistributionRequest = z.object({
@@ -139,5 +142,20 @@ export const BankReceiptRequest = z.object({
   donorId: uuid.nullish(),
   newDonor: z.object({ donorType: z.enum(['INDIVIDUAL', 'CORPORATION', 'GROUP']), displayName: z.string().trim().max(100).nullish() }).nullish(),
   memo: z.string().max(500).nullish(),
+  pledgeId: uuid.nullish(),
+  pledgeMonth: month.nullish(),
 });
 export const ExcludeBankTransactionRequest = z.object({ reason: z.string().trim().min(1).max(200) });
+
+// ───────────── 정기후원 약정 ─────────────
+export const CreatePledgeRequest = z.object({
+  donorId: uuid,
+  fundId: uuid,
+  facilityId: uuid,
+  amount: won,
+  startMonth: month,
+  endMonth: month.nullish(),
+  method: z.enum(['BANK_TRANSFER', 'CMS', 'CARD', 'OTHER']),
+  memo: z.string().trim().max(300).nullish(),
+});
+export const EndPledgeRequest = z.object({ endMonth: month, reason: z.string().trim().min(1).max(200) });

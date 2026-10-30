@@ -114,11 +114,14 @@ export async function generateDocument(form: FormData) {
 
 export async function createMoneyReceipt(form: FormData) {
   const fundLines = [0, 1].map((i) => ({ fundId: s(form, `fundId${i}`), amount: s(form, `fundAmount${i}`)?.replaceAll(',', '') ?? null })).filter((l) => l.fundId && l.amount);
+  // 약정 선택값은 '약정id|후원자id'. 후원자를 비워 두면 약정 후원자로 채운다(다르게 고르면 API가 거부).
+  const [pledgeId, pledgeDonor] = (s(form, 'pledge') ?? '').split('|');
   await run('/money', () => api('/v1/money-receipts', {
     method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
     body: {
-      facilityId: s(form, 'facilityId'), donorId: s(form, 'donorId'), receivedOn: s(form, 'receivedOn'),
+      facilityId: s(form, 'facilityId'), donorId: s(form, 'donorId') ?? (pledgeDonor || null), receivedOn: s(form, 'receivedOn'),
       amount: s(form, 'amount')?.replaceAll(',', ''), method: s(form, 'method'), memo: s(form, 'memo'), fundLines,
+      pledgeId: pledgeId || null, pledgeMonth: pledgeId ? s(form, 'pledgeMonth') : null,
     },
   }), '후원금 초안을 저장했습니다.');
 }
@@ -189,11 +192,13 @@ export async function bankToReceipt(form: FormData) {
   const donor = s(form, 'donor'); // 후원자 id, 'new:INDIVIDUAL' 등, 비우면 익명/미확인
   const view = s(form, 'view') ?? 'open';
   const isNew = donor?.startsWith('new:');
+  const pledgeId = s(form, 'pledgeId');
   await run(`/money/import?view=${view}`, () => api(`/v1/bank-transactions/${encodeURIComponent(txId)}/receipt`, {
     method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
     body: {
       facilityId: s(form, 'facilityId'), fundId: s(form, 'fundId'), amount: s(form, 'amount')?.replaceAll(',', '') ?? null,
       donorId: isNew ? null : donor, newDonor: isNew ? { donorType: donor!.slice(4) } : null,
+      pledgeId, pledgeMonth: pledgeId ? s(form, 'pledgeMonth') : null,
     },
   }), `${s(form, 'label') ?? '입금'}: 후원금 초안을 만들었습니다. 후원금 화면에서 승인 요청하십시오.`);
 }
@@ -211,4 +216,23 @@ export async function bankReopen(form: FormData) {
   await run('/money/import?view=excluded', () => api(`/v1/bank-transactions/${encodeURIComponent(txId)}/reopen`, {
     method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
   }), `${s(form, 'label') ?? '입금'}: 표시를 해제해 미대조 목록으로 되돌렸습니다.`);
+}
+
+/* ── 정기후원 약정 ── */
+export async function createPledge(form: FormData) {
+  await run('/pledges', () => api('/v1/pledges', {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+    body: {
+      donorId: s(form, 'donorId'), fundId: s(form, 'fundId'), facilityId: s(form, 'facilityId'), amount: s(form, 'amount')?.replaceAll(',', ''),
+      startMonth: s(form, 'startMonth'), endMonth: s(form, 'endMonth'), method: s(form, 'method'), memo: s(form, 'memo'),
+    },
+  }), '약정을 등록했습니다. 약정은 수입이 아니며, 실제 입금을 연결·승인해야 납입으로 표시됩니다.');
+}
+
+export async function endPledge(form: FormData) {
+  const pledgeId = s(form, 'pledgeId') ?? '';
+  await run('/pledges', () => api(`/v1/pledges/${encodeURIComponent(pledgeId)}/end`, {
+    method: 'POST', idempotencyKey: s(form, 'idempotencyKey') ?? undefined,
+    body: { endMonth: s(form, 'endMonth'), reason: s(form, 'reason') },
+  }), `${s(form, 'label') ?? '약정'}: 약정을 끝냈습니다.`);
 }

@@ -4,7 +4,7 @@ import { won } from '@/lib/format';
 
 interface Dashboard {
   businessDate: string; pendingApprovals: number; goodsDrafts: number; moneyDrafts: number; unconfirmedValuations: number;
-  expiringLots: number; distributionsToPost: number; externalPending: number; unmatchedDeposits: number; monthConfirmedIncome: string; monthGoodsReceipts: number;
+  expiringLots: number; distributionsToPost: number; externalPending: number; unmatchedDeposits: number; pledgesInArrears: number | null; monthConfirmedIncome: string; monthGoodsReceipts: number;
 }
 
 export default async function TodayPage() {
@@ -27,6 +27,7 @@ export default async function TodayPage() {
     { n: d.pendingApprovals, l: '승인 대기', href: '/approvals' },
     { n: d.goodsDrafts + d.moneyDrafts, l: '승인 요청 전 초안·반려', href: '/goods' },
     { n: d.unmatchedDeposits, l: '통장 미대조 입금', href: '/money/import' },
+    ...(d.pledgesInArrears === null ? [] : [{ n: d.pledgesInArrears, l: '지난달까지 미납 있는 약정', href: '/pledges?arrears=1' }]),
     { n: d.distributionsToPost, l: '승인됐지만 출고 미반영 배분', href: '/distributions' },
     { n: d.unconfirmedValuations, l: '가액 미확정 후원품 행', href: '/goods' },
     { n: d.expiringLots, l: '30일 내 유효기한 로트', href: '/stock' },

@@ -6,6 +6,7 @@ import type { ActorContext } from '../pool';
 import { assertActiveMaster, audit, requireAction, type Db } from './common';
 import { createDonor, type DonorType } from './donors';
 import { createMoneyReceiptDraft } from './money';
+import { assertPledgeLink } from './pledges';
 import type { PiiCipher } from './pii';
 
 /**
@@ -91,10 +92,18 @@ export async function listBankTransactions(db: Db, ctx: ActorContext, q: { view?
     if (!k) continue;
     byKey.set(k, [...(byKey.get(k) ?? []), { id: d.id, displayName: d.display_name }]);
   }
+  // 약정 후보: 이름이 같은 후원자의 약정 중 입금일이 약정 기간 안인 것. 고르는 것은 사람이 한다.
+  const pledges = r.rowCount
+    ? (await db.query<{ id: string; donor_id: string; amount: string; s: string; e: string | null }>(
+      `select id, donor_id, amount, to_char(start_month, 'YYYY-MM') as s, to_char(end_month, 'YYYY-MM') as e from pledges`,
+    )).rows
+    : [];
   return r.rows.map((t) => {
     const amount = BigInt(t.amount as string);
     const allocated = BigInt(t.allocated as string);
     const remaining = amount - allocated;
+    const candidates = byKey.get(nameKey(t.counterparty as string)) ?? [];
+    const month = (t.occurred_on as string).slice(0, 7);
     return {
       id: t.id as string, accountLabel: t.account_label as string, occurredOn: t.occurred_on as string,
       occurredTime: (t.occurred_time ?? null) as string | null, amount: amount.toString(), allocated: allocated.toString(),
@@ -102,7 +111,10 @@ export async function listBankTransactions(db: Db, ctx: ActorContext, q: { view?
       status: t.status === 'EXCLUDED' ? 'EXCLUDED' : remaining === 0n ? 'MATCHED' : allocated > 0n ? 'PARTIAL' : 'OPEN',
       excludeReason: (t.exclude_reason ?? null) as string | null,
       receipts: t.receipts as { id: string; amount: string; status: string; donorName: string | null }[],
-      donorCandidates: byKey.get(nameKey(t.counterparty as string)) ?? [],
+      donorCandidates: candidates,
+      pledgeCandidates: pledges
+        .filter((p) => candidates.some((c) => c.id === p.donor_id) && p.s <= month && (p.e === null || month <= p.e))
+        .map((p) => ({ id: p.id, donorId: p.donor_id, amount: p.amount, sameAmount: BigInt(p.amount) === remaining })),
     };
   });
 }
@@ -126,7 +138,8 @@ export async function createReceiptFromBank(
   ctx: ActorContext,
   cipher: PiiCipher,
   txId: string,
-  input: { facilityId: string; fundId: string; amount?: string | null; donorId?: string | null; newDonor?: { donorType: DonorType; displayName?: string | null } | null; memo?: string | null },
+  input: { facilityId: string; fundId: string; amount?: string | null; donorId?: string | null; newDonor?: { donorType: DonorType; displayName?: string | null } | null; memo?: string | null;
+    pledgeId?: string | null; pledgeMonth?: string | null },
 ) {
   requireAction(ctx, 'money.draft');
   const t = await lockOpenTransaction(db, txId);
@@ -139,6 +152,9 @@ export async function createReceiptFromBank(
   if (input.donorId && input.newDonor) throw new DomainError('VALIDATION_FAILED', '기존 후원자와 새 후원자 중 하나만 고르십시오.');
   await assertActiveMaster(db, 'funds', [input.fundId]);
   let donorId = input.donorId ?? null;
+  if (input.pledgeId && input.newDonor) throw new DomainError('VALIDATION_FAILED', '새 후원자는 약정에 연결할 수 없습니다. 약정을 먼저 등록하십시오.', { pledgeId: '새 후원자' });
+  // 약정을 고르고 후원자를 비워 두면(입금자명이 후원자와 다른 경우) 약정 후원자로 채운다.
+  if (input.pledgeId && !donorId) donorId = (await assertPledgeLink(db, input.pledgeId, null, (input.pledgeMonth || t.occurred_on).slice(0, 7))).donorId;
   if (input.newDonor) {
     const name = (input.newDonor.displayName ?? t.counterparty).trim();
     donorId = (await createDonor(db, ctx, cipher, { donorType: input.newDonor.donorType, displayName: name, facilityId: input.facilityId })).id;
@@ -147,6 +163,7 @@ export async function createReceiptFromBank(
     facilityId: input.facilityId, donorId, receivedOn: t.occurred_on, amount: amount.toString(), method: 'BANK_TRANSFER',
     memo: input.memo?.trim() || `통장 입금 연결(${t.account_label})`,
     fundLines: [{ fundId: input.fundId, amount: amount.toString() }],
+    pledgeId: input.pledgeId ?? null, pledgeMonth: input.pledgeMonth ?? null,
   });
   await db.query(
     `insert into bank_allocations (tenant_id, bank_transaction_id, money_receipt_id, amount, created_by) values (app_tenant(), $1, $2, $3, $4)`,

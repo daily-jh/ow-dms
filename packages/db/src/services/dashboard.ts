@@ -1,5 +1,7 @@
+import { rolesAllow, type Role } from '@owdms/domain';
 import type { ActorContext } from '../pool';
 import { requireAction, type Db } from './common';
+import { countPledgesInArrears } from './pledges';
 
 /** 오늘의 업무: 합계보다 처리할 일(승인대기·가액 미확정·유효기한 임박·외부확인 대기)을 먼저 보여준다. */
 export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: string) {
@@ -24,6 +26,8 @@ export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: st
     [businessDate],
   );
   const x = r.rows[0];
+  // 약정 미납은 후원금을 볼 수 있는 사람에게만 센다(물품담당 등은 null).
+  const pledgesInArrears = rolesAllow(ctx.roles as Role[], 'money.read') ? await countPledgesInArrears(db, ctx, businessDate.slice(0, 7)) : null;
   return {
     businessDate,
     pendingApprovals: x.pending_approvals as number,
@@ -34,6 +38,7 @@ export async function todayDashboard(db: Db, ctx: ActorContext, businessDate: st
     distributionsToPost: x.distributions_to_post as number,
     externalPending: x.external_pending as number,
     unmatchedDeposits: x.unmatched_deposits as number,
+    pledgesInArrears,
     // 집계 기준: 승인된 수납, 실제 수납일(received_on) 기준
     monthConfirmedIncome: x.month_confirmed_income as string,
     monthGoodsReceipts: x.month_goods_receipts as number,
