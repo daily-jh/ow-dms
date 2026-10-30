@@ -8,7 +8,7 @@ import {
   ExcludeBankTransactionRequest, CreatePledgeRequest, EndPledgeRequest, ApplyYeonmuPresetRequest, UpdateCatalogItemRequest,
 } from '@owdms/contracts';
 import {
-  confirmTransaction, confirmCorrection, confirmPendingCorrection, capabilities, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
+  confirmTransaction, confirmCorrection, confirmPendingCorrection, capabilities, hopeEumGuideFor, createDistributionDraft, createDonor, createGoodsReceiptBatch, createGoodsReceiptDraft,
   createMoneyReceiptDraft, decideApproval, exportGoodsReceiptBatch, generateDocument, getGoodsReceipt, getLedger,
   listApprovals, listBatches, listDistributions, listDocuments, listDonors, listGoodsReceipts, listMoneyReceipts, listStock,
   postDistribution, renderStoredDocument, requestApproval, submitBatch, todayDashboard, requestCorrection, listCorrections,
@@ -323,6 +323,12 @@ export class LedgerController {
   async capabilities(@Req() req: Request) {
     const ctx = await this.rt.actor(req);
     return capabilities(ctx);
+  }
+
+  @Get('integrations/hope-eum-guide')
+  async hopeEumGuide(@Req() req: Request) {
+    const ctx = await this.rt.actor(req);
+    return hopeEumGuideFor(ctx);
   }
 
   @Get('integration-batches')
